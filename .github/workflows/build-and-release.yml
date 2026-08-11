@@ -169,17 +169,17 @@ jobs:
 
       - name: Install npm dependencies
         run: |
-          cd RadiKeep
+          cd RadiCorder
           npm ci
 
       - name: Publish self-contained app (win-x64)
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/win-x64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/win-x64/app RadiCorder/RadiCorder.csproj
 
       - name: Publish self-contained app (linux-x64)
-        run: dotnet publish -c Release -r linux-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/linux-x64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/linux-x64/app RadiCorder/RadiCorder.csproj
 
       - name: Publish self-contained app (linux-arm64)
-        run: dotnet publish -c Release -r linux-arm64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/linux-arm64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-arm64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/release/zip/linux-arm64/app RadiCorder/RadiCorder.csproj
 
       - name: Prepare ZIP payloads
         run: |
@@ -215,9 +215,9 @@ jobs:
             cp -a "$THIRD_PARTY_DIR" output/release/zip/linux-x64/app/THIRD_PARTY_LICENSES
             cp -a "$THIRD_PARTY_DIR" output/release/zip/linux-arm64/app/THIRD_PARTY_LICENSES
           fi
-          cp RadiKeep/appsettings.Development.sample.json output/release/zip/win-x64/app/appsettings.Development.sample.json
-          cp RadiKeep/appsettings.Development.sample.json output/release/zip/linux-x64/app/appsettings.Development.sample.json
-          cp RadiKeep/appsettings.Development.sample.json output/release/zip/linux-arm64/app/appsettings.Development.sample.json
+          cp RadiCorder/appsettings.Development.sample.json output/release/zip/win-x64/app/appsettings.Development.sample.json
+          cp RadiCorder/appsettings.Development.sample.json output/release/zip/linux-x64/app/appsettings.Development.sample.json
+          cp RadiCorder/appsettings.Development.sample.json output/release/zip/linux-arm64/app/appsettings.Development.sample.json
 
           if [ -f LICENSE ]; then
             cp LICENSE output/release/zip/win-x64/app/LICENSE
@@ -232,9 +232,9 @@ jobs:
       - name: Create ZIPs and checksums
         run: |
           set -euxo pipefail
-          (cd output/release/zip/win-x64 && zip -r ../../zips/RadiKeep-${VERSION}-win-x64.zip app)
-          (cd output/release/zip/linux-x64 && zip -r ../../zips/RadiKeep-${VERSION}-linux-x64.zip app)
-          (cd output/release/zip/linux-arm64 && zip -r ../../zips/RadiKeep-${VERSION}-linux-arm64.zip app)
+          (cd output/release/zip/win-x64 && zip -r ../../zips/RadiCorder-${VERSION}-win-x64.zip app)
+          (cd output/release/zip/linux-x64 && zip -r ../../zips/RadiCorder-${VERSION}-linux-x64.zip app)
+          (cd output/release/zip/linux-arm64 && zip -r ../../zips/RadiCorder-${VERSION}-linux-arm64.zip app)
           (cd output/release/zips && sha256sum ./*.zip > SHA256SUMS-zips.txt)
 
       - name: Upload ZIPs to Release
@@ -270,16 +270,16 @@ jobs:
       - name: Install npm dependencies
         shell: pwsh
         run: |
-          Set-Location RadiKeep
+          Set-Location RadiCorder
           npm ci
 
       - name: Publish framework-dependent app
         shell: pwsh
-        run: dotnet publish -c Release -p:Version=${env:VERSION} -p:InformationalVersion=${env:VERSION} -o .\output\installer\fd\app RadiKeep\RadiKeep.csproj
+        run: dotnet publish -c Release -p:Version=${env:VERSION} -p:InformationalVersion=${env:VERSION} -o .\output\installer\fd\app RadiCorder\RadiCorder.csproj
 
       - name: Publish self-contained app (win-x64)
         shell: pwsh
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=${env:VERSION} -p:InformationalVersion=${env:VERSION} -o .\output\installer\sc\app RadiKeep\RadiKeep.csproj
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=${env:VERSION} -p:InformationalVersion=${env:VERSION} -o .\output\installer\sc\app RadiCorder\RadiCorder.csproj
 
       - name: Prepare installer payloads
         shell: pwsh
@@ -299,7 +299,7 @@ jobs:
             } elseif (Test-Path .\THIRD_PARTY_LICENCES) {
               Copy-Item -Path .\THIRD_PARTY_LICENCES -Destination (Join-Path $payloadDir "THIRD_PARTY_LICENSES") -Recurse -Force
             }
-            Copy-Item -Path .\RadiKeep\appsettings.Development.sample.json -Destination (Join-Path $payloadDir "appsettings.Development.sample.json") -Force
+            Copy-Item -Path .\RadiCorder\appsettings.Development.sample.json -Destination (Join-Path $payloadDir "appsettings.Development.sample.json") -Force
             if (Test-Path .\LICENSE) {
               Copy-Item -Path .\LICENSE -Destination (Join-Path $payloadDir "LICENSE") -Force
             } elseif (Test-Path .\LICENSE.MD) {
@@ -316,7 +316,7 @@ jobs:
         run: |
           $sourceDir = Join-Path $env:GITHUB_WORKSPACE "output\installer\fd\app"
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "output\release\windows-installer"
-          $issPath = Join-Path $env:GITHUB_WORKSPACE "installer\windows\RadiKeep.iss"
+          $issPath = Join-Path $env:GITHUB_WORKSPACE "installer\windows\RadiCorder.iss"
           New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             "/DMyAppVersion=$env:VERSION" `
@@ -331,7 +331,7 @@ jobs:
         run: |
           $sourceDir = Join-Path $env:GITHUB_WORKSPACE "output\installer\sc\app"
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "output\release\windows-installer"
-          $issPath = Join-Path $env:GITHUB_WORKSPACE "installer\windows\RadiKeep.iss"
+          $issPath = Join-Path $env:GITHUB_WORKSPACE "installer\windows\RadiCorder.iss"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             "/DMyAppVersion=$env:VERSION" `
             "/DInstallerFlavor=sc" `
@@ -343,7 +343,7 @@ jobs:
       - name: Create checksums
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path .\output\release\windows-installer -Filter "RadiKeep-setup-*.exe"
+          $files = Get-ChildItem -Path .\output\release\windows-installer -Filter "RadiCorder-setup-*.exe"
           if ($files.Count -eq 0) { throw "Installer exe was not found." }
           foreach ($exe in $files) {
             $hash = Get-FileHash -Path $exe.FullName -Algorithm SHA256
@@ -357,8 +357,8 @@ jobs:
           tag_name: ${{ needs.prepare-release.outputs.tag }}
           draft: true
           files: |
-            output/release/windows-installer/RadiKeep-setup-*.exe
-            output/release/windows-installer/RadiKeep-setup-*.exe.sha256
+            output/release/windows-installer/RadiCorder-setup-*.exe
+            output/release/windows-installer/RadiCorder-setup-*.exe.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -385,20 +385,20 @@ jobs:
 
       - name: Install npm dependencies
         run: |
-          cd RadiKeep
+          cd RadiCorder
           npm ci
 
       - name: Publish framework-dependent app (linux-x64)
-        run: dotnet publish -c Release -r linux-x64 --self-contained false -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/fd/linux-x64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-x64 --self-contained false -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/fd/linux-x64/app RadiCorder/RadiCorder.csproj
 
       - name: Publish framework-dependent app (linux-arm64)
-        run: dotnet publish -c Release -r linux-arm64 --self-contained false -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/fd/linux-arm64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-arm64 --self-contained false -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/fd/linux-arm64/app RadiCorder/RadiCorder.csproj
 
       - name: Publish self-contained app (linux-x64)
-        run: dotnet publish -c Release -r linux-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/sc/linux-x64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-x64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/sc/linux-x64/app RadiCorder/RadiCorder.csproj
 
       - name: Publish self-contained app (linux-arm64)
-        run: dotnet publish -c Release -r linux-arm64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/sc/linux-arm64/app RadiKeep/RadiKeep.csproj
+        run: dotnet publish -c Release -r linux-arm64 --self-contained true -p:Version=${VERSION} -p:InformationalVersion=${VERSION} -o ./output/installer/sc/linux-arm64/app RadiCorder/RadiCorder.csproj
 
       - name: Build DEB packages
         run: |
@@ -431,7 +431,7 @@ jobs:
       - name: Build Docker image (linux/amd64)
         run: |
           set -euxo pipefail
-          docker build --platform linux/amd64 --build-arg APP_VERSION=${VERSION} -t radikeep:${VERSION} -f RadiKeep/Dockerfile .
+          docker build --platform linux/amd64 --build-arg APP_VERSION=${VERSION} -t radicorder:${VERSION} -f RadiCorder/Dockerfile .
 
       - name: Resolve GHCR image name
         if: needs.prepare-release.outputs.release_mode == 'stable'
@@ -453,10 +453,10 @@ jobs:
         if: needs.prepare-release.outputs.release_mode == 'stable'
         run: |
           set -euxo pipefail
-          docker tag radikeep:${VERSION} "${GHCR_IMAGE_TAG}"
+          docker tag radicorder:${VERSION} "${GHCR_IMAGE_TAG}"
           docker push "${GHCR_IMAGE_TAG}"
           if [[ "${PUBLISH_LATEST}" == "true" ]]; then
-            docker tag radikeep:${VERSION} "${GHCR_IMAGE_TAG_LATEST}"
+            docker tag radicorder:${VERSION} "${GHCR_IMAGE_TAG_LATEST}"
             docker push "${GHCR_IMAGE_TAG_LATEST}"
           fi
 
@@ -464,7 +464,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p output/release/linux
-          docker save -o output/release/linux/RadiKeep-docker-${VERSION}-linux-amd64.tar radikeep:${VERSION}
+          docker save -o output/release/linux/RadiCorder-docker-${VERSION}-linux-amd64.tar radicorder:${VERSION}
 
       - name: Create checksums
         run: |

@@ -89,16 +89,16 @@ if [[ ! -d "$PUBLISH_DIR" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$PUBLISH_DIR/RadiKeep" && ! -f "$PUBLISH_DIR/RadiKeep.dll" ]]; then
-  echo "RadiKeep binary not found in publish directory: $PUBLISH_DIR" >&2
+if [[ ! -f "$PUBLISH_DIR/RadiCorder" && ! -f "$PUBLISH_DIR/RadiCorder.dll" ]]; then
+  echo "RadiCorder binary not found in publish directory: $PUBLISH_DIR" >&2
   exit 1
 fi
 
 # パッケージ依存関係は variant で変える。
 # - sc: ランタイム同梱前提
 # - fd: OS 側の dotnet / aspnetcore runtime 必須
-PACKAGE_NAME="radikeep"
-PACKAGE_TITLE="RadiKeep (${VARIANT^^})"
+PACKAGE_NAME="radicorder"
+PACKAGE_TITLE="RadiCorder (${VARIANT^^})"
 DEPENDS="ffmpeg"
 if [[ "$VARIANT" == "fd" ]]; then
   DEPENDS="ffmpeg, dotnet-runtime-10.0, aspnetcore-runtime-10.0"
@@ -109,13 +109,13 @@ trap 'rm -rf "$STAGE_DIR"' EXIT
 
 # Debian パッケージの標準レイアウトを stage に作る。
 mkdir -p "$STAGE_DIR/DEBIAN"
-mkdir -p "$STAGE_DIR/opt/radikeep"
-mkdir -p "$STAGE_DIR/etc/radikeep"
+mkdir -p "$STAGE_DIR/opt/radicorder"
+mkdir -p "$STAGE_DIR/etc/radicorder"
 mkdir -p "$STAGE_DIR/etc/default"
 mkdir -p "$STAGE_DIR/lib/systemd/system"
 mkdir -p "$STAGE_DIR/usr/share/doc/${PACKAGE_NAME}"
 
-cp -a "$PUBLISH_DIR/." "$STAGE_DIR/opt/radikeep/"
+cp -a "$PUBLISH_DIR/." "$STAGE_DIR/opt/radicorder/"
 
 # 配布時のライセンス明記のため、ドキュメント類を同梱する。
 if [[ -f "$REPO_ROOT/README.MD" ]]; then
@@ -136,26 +136,26 @@ elif [[ -f "$REPO_ROOT/LICENSE.MD" ]]; then
 fi
 
 # 実行形式に応じて systemd が呼ぶ起動ラッパーを生成する。
-if [[ -f "$STAGE_DIR/opt/radikeep/RadiKeep" ]]; then
-  cat > "$STAGE_DIR/opt/radikeep/start-radikeep.sh" <<'EOF'
+if [[ -f "$STAGE_DIR/opt/radicorder/RadiCorder" ]]; then
+  cat > "$STAGE_DIR/opt/radicorder/start-radicorder.sh" <<'EOF'
 #!/bin/sh
 set -eu
-exec /opt/radikeep/RadiKeep "$@"
+exec /opt/radicorder/RadiCorder "$@"
 EOF
-elif [[ -f "$STAGE_DIR/opt/radikeep/RadiKeep.dll" ]]; then
-  cat > "$STAGE_DIR/opt/radikeep/start-radikeep.sh" <<'EOF'
+elif [[ -f "$STAGE_DIR/opt/radicorder/RadiCorder.dll" ]]; then
+  cat > "$STAGE_DIR/opt/radicorder/start-radicorder.sh" <<'EOF'
 #!/bin/sh
 set -eu
-exec dotnet /opt/radikeep/RadiKeep.dll "$@"
+exec dotnet /opt/radicorder/RadiCorder.dll "$@"
 EOF
 else
-  echo "Neither RadiKeep nor RadiKeep.dll found after staging publish output." >&2
+  echo "Neither RadiCorder nor RadiCorder.dll found after staging publish output." >&2
   exit 1
 fi
 
-chmod 0755 "$STAGE_DIR/opt/radikeep/start-radikeep.sh"
+chmod 0755 "$STAGE_DIR/opt/radicorder/start-radicorder.sh"
 # maintainer scripts / debconf 定義 / unit ファイルを配置する。
-cp "$RESOURCES_DIR/radikeep.service" "$STAGE_DIR/lib/systemd/system/radikeep.service"
+cp "$RESOURCES_DIR/radicorder.service" "$STAGE_DIR/lib/systemd/system/radicorder.service"
 cp "$RESOURCES_DIR/debian/templates" "$STAGE_DIR/DEBIAN/templates"
 cp "$RESOURCES_DIR/debian/config" "$STAGE_DIR/DEBIAN/config"
 cp "$RESOURCES_DIR/debian/postinst" "$STAGE_DIR/DEBIAN/postinst"
@@ -174,11 +174,11 @@ Version: ${VERSION}
 Section: web
 Priority: optional
 Architecture: ${ARCH}
-Maintainer: RadiKeep Project
+Maintainer: RadiCorder Project
 Depends: ${DEPENDS}
 Description: ${PACKAGE_TITLE}
- RadiKeep is a personal web app for internet radio recording and playback.
- This package installs RadiKeep with systemd unit and interactive initial settings.
+ RadiCorder is a personal web app for internet radio recording and playback.
+ This package installs RadiCorder with systemd unit and interactive initial settings.
 EOF
 
 mkdir -p "$OUTPUT_DIR"

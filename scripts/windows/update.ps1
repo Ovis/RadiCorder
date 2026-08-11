@@ -1,7 +1,7 @@
-﻿param(
-    [string]$InstallDir = "$env:LOCALAPPDATA\RadiKeep",
+param(
+    [string]$InstallDir = "$env:LOCALAPPDATA\RadiCorder",
     [string]$AppSourceDir = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path "publish"),
-    [string]$ServiceName = "RadiKeep",
+    [string]$ServiceName = "RadiCorder",
     [int]$HttpPort = 8085,
     [int]$StopTimeoutSec = 60
 )
@@ -40,7 +40,7 @@ function Ensure-ElevatedSelf {
     exit $ExitCodeSuccess
 }
 
-function Stop-RadiKeepTaskForUpdate {
+function Stop-RadiCorderTaskForUpdate {
     param(
         [Parameter(Mandatory = $true)][string]$TaskName,
         [Parameter(Mandatory = $true)][int]$TimeoutSec
@@ -73,7 +73,7 @@ try {
     $task = Get-ScheduledTask -TaskName $ServiceName -ErrorAction SilentlyContinue
     if ($null -eq $task) { Exit-WithCode -Code $ExitCodeTaskRegister -Message "タスク '$ServiceName' が見つかりません。" }
 
-    Stop-RadiKeepTaskForUpdate -TaskName $ServiceName -TimeoutSec $StopTimeoutSec
+    Stop-RadiCorderTaskForUpdate -TaskName $ServiceName -TimeoutSec $StopTimeoutSec
 
     $backupRoot = Join-Path $InstallDir "_backup"
     $backupDir = Join-Path $backupRoot (Get-Date -Format "yyyyMMdd-HHmmss")

@@ -3,16 +3,16 @@ set -e
 
 # postinst は「ユーザー/権限準備」「初期設定反映」「systemd 有効化/起動」「完了案内」を担う。
 
-PACKAGE_USER="radikeep"
-PACKAGE_GROUP="radikeep"
-CONFIG_DIR="/etc/radikeep"
-DEFAULTS_FILE="/etc/default/radikeep"
-DATA_DIR="/var/lib/radikeep"
-LOG_DIR="/var/log/radikeep"
-KEYS_DIR="/var/lib/radikeep/keys"
+PACKAGE_USER="radicorder"
+PACKAGE_GROUP="radicorder"
+CONFIG_DIR="/etc/radicorder"
+DEFAULTS_FILE="/etc/default/radicorder"
+DATA_DIR="/var/lib/radicorder"
+LOG_DIR="/var/log/radicorder"
+KEYS_DIR="/var/lib/radicorder/keys"
 
 json_escape() {
-  # radikeep.settings.json をシェルで生成するため、最低限のエスケープを行う。
+  # radicorder.settings.json をシェルで生成するため、最低限のエスケープを行う。
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
@@ -23,7 +23,7 @@ get_debconf_value() {
     return 1
   fi
 
-  result="$(printf 'GET %s\n' "$key" | debconf-communicate radikeep 2>/dev/null | tail -n 1 || true)"
+  result="$(printf 'GET %s\n' "$key" | debconf-communicate radicorder 2>/dev/null | tail -n 1 || true)"
   case "$result" in
     0\ *)
       printf '%s' "${result#0 }"
@@ -92,7 +92,7 @@ ensure_dirs() {
 }
 
 write_defaults_file() {
-  # /etc/default/radikeep は systemd EnvironmentFile として読み込まれる。
+  # /etc/default/radicorder は systemd EnvironmentFile として読み込まれる。
   # 既存ファイルがあれば差分更新し、ユーザー設定を極力維持する。
   port="$1"
   record_dir="$2"
@@ -100,12 +100,12 @@ write_defaults_file() {
   aspnetcore_urls="http://0.0.0.0:${port}"
   if [ ! -f "$DEFAULTS_FILE" ]; then
     cat > "$DEFAULTS_FILE" <<EOF
-# RadiKeep runtime settings
+# RadiCorder runtime settings
 RADIKEEP_PORT=${port}
 RADIKEEP_BIND_ADDRESS=0.0.0.0
 ASPNETCORE_URLS=${aspnetcore_urls}
-RadiKeep__RecordFileSaveFolder=${record_dir}
-RadiKeep__TemporaryFileSaveFolder=${temp_dir}
+RadiCorder__RecordFileSaveFolder=${record_dir}
+RadiCorder__TemporaryFileSaveFolder=${temp_dir}
 EOF
     chmod 0644 "$DEFAULTS_FILE"
     return
@@ -127,26 +127,26 @@ EOF
     echo "ASPNETCORE_URLS=${aspnetcore_urls}" >> "$DEFAULTS_FILE"
   fi
 
-  if grep -q '^RadiKeep__RecordFileSaveFolder=' "$DEFAULTS_FILE"; then
-    sed -i "s#^RadiKeep__RecordFileSaveFolder=.*#RadiKeep__RecordFileSaveFolder=${record_dir}#" "$DEFAULTS_FILE"
+  if grep -q '^RadiCorder__RecordFileSaveFolder=' "$DEFAULTS_FILE"; then
+    sed -i "s#^RadiCorder__RecordFileSaveFolder=.*#RadiCorder__RecordFileSaveFolder=${record_dir}#" "$DEFAULTS_FILE"
   else
-    echo "RadiKeep__RecordFileSaveFolder=${record_dir}" >> "$DEFAULTS_FILE"
+    echo "RadiCorder__RecordFileSaveFolder=${record_dir}" >> "$DEFAULTS_FILE"
   fi
 
-  if grep -q '^RadiKeep__TemporaryFileSaveFolder=' "$DEFAULTS_FILE"; then
-    sed -i "s#^RadiKeep__TemporaryFileSaveFolder=.*#RadiKeep__TemporaryFileSaveFolder=${temp_dir}#" "$DEFAULTS_FILE"
+  if grep -q '^RadiCorder__TemporaryFileSaveFolder=' "$DEFAULTS_FILE"; then
+    sed -i "s#^RadiCorder__TemporaryFileSaveFolder=.*#RadiCorder__TemporaryFileSaveFolder=${temp_dir}#" "$DEFAULTS_FILE"
   else
-    echo "RadiKeep__TemporaryFileSaveFolder=${temp_dir}" >> "$DEFAULTS_FILE"
+    echo "RadiCorder__TemporaryFileSaveFolder=${temp_dir}" >> "$DEFAULTS_FILE"
   fi
 }
 
 write_settings_file() {
-  # radikeep.settings.json は初回のみ作成。
+  # radicorder.settings.json は初回のみ作成。
   # 既存がある場合はユーザー上書きを避けるため触らない。
   record_dir="$1"
   temp_dir="$2"
 
-  if [ -f "$CONFIG_DIR/radikeep.settings.json" ]; then
+  if [ -f "$CONFIG_DIR/radicorder.settings.json" ]; then
     return
   fi
 
@@ -156,9 +156,9 @@ write_settings_file() {
   esc_db_dir="$(json_escape "$DATA_DIR/db")"
   esc_log_dir="$(json_escape "$LOG_DIR")"
 
-  cat > "$CONFIG_DIR/radikeep.settings.json" <<EOF
+  cat > "$CONFIG_DIR/radicorder.settings.json" <<EOF
 {
-  "RadiKeep": {
+  "RadiCorder": {
     "DbDirectory": "${esc_db_dir}",
     "LogDirectory": "${esc_log_dir}",
     "RecordFileSaveFolder": "${esc_record_dir}",
@@ -168,8 +168,8 @@ write_settings_file() {
 }
 EOF
 
-  chmod 0640 "$CONFIG_DIR/radikeep.settings.json"
-  chown "$PACKAGE_USER:$PACKAGE_GROUP" "$CONFIG_DIR/radikeep.settings.json"
+  chmod 0640 "$CONFIG_DIR/radicorder.settings.json"
+  chown "$PACKAGE_USER:$PACKAGE_GROUP" "$CONFIG_DIR/radicorder.settings.json"
 }
 
 configure_from_debconf() {
@@ -178,9 +178,9 @@ configure_from_debconf() {
   record_dir=""
   temp_dir=""
 
-  port="$(get_debconf_value radikeep/port || true)"
-  record_dir="$(get_debconf_value radikeep/record_dir || true)"
-  temp_dir="$(get_debconf_value radikeep/temp_dir || true)"
+  port="$(get_debconf_value radicorder/port || true)"
+  record_dir="$(get_debconf_value radicorder/record_dir || true)"
+  temp_dir="$(get_debconf_value radicorder/temp_dir || true)"
 
   case "$port" in
     ''|*[!0-9]*) port=8085 ;;
@@ -218,20 +218,20 @@ systemd_reload_and_restart() {
   fi
 
   systemctl daemon-reload
-  systemctl enable radikeep.service
-  if ! systemctl is-enabled --quiet radikeep.service; then
-    echo "エラー: radikeep.service の有効化に失敗しました。" >&2
+  systemctl enable radicorder.service
+  if ! systemctl is-enabled --quiet radicorder.service; then
+    echo "エラー: radicorder.service の有効化に失敗しました。" >&2
     exit 1
   fi
 
-  if systemctl is-active --quiet radikeep.service; then
-    systemctl restart radikeep.service
+  if systemctl is-active --quiet radicorder.service; then
+    systemctl restart radicorder.service
   else
-    systemctl start radikeep.service
+    systemctl start radicorder.service
   fi
 
-  if ! systemctl is-active --quiet radikeep.service; then
-    echo "エラー: radikeep.service の起動に失敗しました。" >&2
+  if ! systemctl is-active --quiet radicorder.service; then
+    echo "エラー: radicorder.service の起動に失敗しました。" >&2
     exit 1
   fi
 }
@@ -261,16 +261,16 @@ show_access_url() {
     else
       access_url="http://${bind_address}:${port}/"
     fi
-    if [ -n "${RadiKeep__RecordFileSaveFolder:-}" ]; then
-      record_dir="$RadiKeep__RecordFileSaveFolder"
+    if [ -n "${RadiCorder__RecordFileSaveFolder:-}" ]; then
+      record_dir="$RadiCorder__RecordFileSaveFolder"
     fi
-    if [ -n "${RadiKeep__TemporaryFileSaveFolder:-}" ]; then
-      temp_dir="$RadiKeep__TemporaryFileSaveFolder"
+    if [ -n "${RadiCorder__TemporaryFileSaveFolder:-}" ]; then
+      temp_dir="$RadiCorder__TemporaryFileSaveFolder"
     fi
   fi
 
   if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
-    service_state="$(systemctl is-active radikeep.service 2>/dev/null || true)"
+    service_state="$(systemctl is-active radicorder.service 2>/dev/null || true)"
   fi
 
   if command -v hostname >/dev/null 2>&1; then
@@ -282,12 +282,12 @@ show_access_url() {
 
   cat <<EOF
 ========================================
-RadiKeep のインストールが完了しました
+RadiCorder のインストールが完了しました
 アクセスURL(ローカル): http://127.0.0.1:${port}/
 ポート: ${port}
 録音保存先: ${record_dir}
 一時保存先: ${temp_dir}
-設定ファイル: ${CONFIG_DIR}/radikeep.settings.json
+設定ファイル: ${CONFIG_DIR}/radicorder.settings.json
 サービス状態: ${service_state}
 EOF
 
@@ -299,7 +299,7 @@ EOF
 
   cat <<EOF
 確認コマンド:
-  sudo systemctl status radikeep.service --no-pager -l
+  sudo systemctl status radicorder.service --no-pager -l
 ========================================
 EOF
 
@@ -308,9 +308,9 @@ EOF
 
   if [ "${service_state}" != "active" ] && [ "${service_state}" != "unknown" ]; then
     cat >&2 <<EOF
-注意: radikeep.service が active ではありません (${service_state})。
+注意: radicorder.service が active ではありません (${service_state})。
 詳細ログ:
-  sudo journalctl -u radikeep.service -n 100 --no-pager
+  sudo journalctl -u radicorder.service -n 100 --no-pager
 EOF
   fi
 }

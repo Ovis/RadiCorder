@@ -1,5 +1,5 @@
-﻿param(
-    [string]$ServiceName = "RadiKeep",
+param(
+    [string]$ServiceName = "RadiCorder",
     [int]$TimeoutSec = 30
 )
 

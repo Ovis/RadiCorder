@@ -1,4 +1,4 @@
-﻿name: PullRequest Branch UnitTest
+name: PullRequest Branch UnitTest
 
 on:
   push:
@@ -25,11 +25,11 @@ jobs:
 
       - name: Install npm dependencies
         run: |
-          cd RadiKeep
+          cd RadiCorder
           npm ci
 
       - name: Build the project
-        run: dotnet build --configuration Release RadiKeep/RadiKeep.csproj
+        run: dotnet build --configuration Release RadiCorder/RadiCorder.csproj
 
-      - name: Test RadiKeep
-        run: dotnet test --configuration Release --verbosity normal RadiKeep.Logics.Tests/RadiKeep.Logics.Tests.csproj
+      - name: Test RadiCorder
+        run: dotnet test --configuration Release --verbosity normal RadiCorder.Logics.Tests/RadiCorder.Logics.Tests.csproj

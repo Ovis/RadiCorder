@@ -4,10 +4,10 @@
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
       "composeLaunchAction": "LaunchBrowser",
-      "composeLaunchServiceName": "radikeep",
+      "composeLaunchServiceName": "radicorder",
       "composeLaunchUrl": "{Scheme}://localhost:{ServicePort}",
       "serviceActions": {
-        "radikeep": "StartDebugging"
+        "radicorder": "StartDebugging"
       }
     }
   }

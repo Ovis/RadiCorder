@@ -407,16 +407,16 @@ FodyWeavers.xsd
 .artifacts/
 
 
-# RadiKeep
+# RadiCorder
 output/
 .build-verify/
 .obj-verify/
-RadiKeep/keys/
-RadiKeep/static/
-RadiKeep/Properties/PublishProfiles/
-RadiKeep/.npm-cache/
-RadiKeep/version.json
-RadiKeep/appsettings.Development.json
-RadiKeep/radikeep.settings.json
+RadiCorder/keys/
+RadiCorder/static/
+RadiCorder/Properties/PublishProfiles/
+RadiCorder/.npm-cache/
+RadiCorder/version.json
+RadiCorder/appsettings.Development.json
+RadiCorder/radicorder.settings.json
 
 

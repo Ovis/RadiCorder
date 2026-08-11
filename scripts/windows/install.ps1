@@ -1,9 +1,9 @@
-﻿param(
-    [string]$InstallDir = "$env:LOCALAPPDATA\RadiKeep",
+param(
+    [string]$InstallDir = "$env:LOCALAPPDATA\RadiCorder",
     [string]$AppSourceDir = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path "publish"),
-    [string]$ServiceName = "RadiKeep",
-    [string]$ServiceDisplayName = "RadiKeep",
-    [string]$ServiceDescription = "RadiKeep",
+    [string]$ServiceName = "RadiCorder",
+    [string]$ServiceDisplayName = "RadiCorder",
+    [string]$ServiceDescription = "RadiCorder",
     [int]$HttpPort = 8085,
     [string]$RecordDir,
     [string]$TempDir,
@@ -30,7 +30,7 @@ $ExitCodeTaskStart = 14
 $ExitCodeHealth = 15
 $ExitCodeUnexpected = 99
 
-$script:LogFilePath = Join-Path $env:TEMP ("radikeep-install-bootstrap-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+$script:LogFilePath = Join-Path $env:TEMP ("radicorder-install-bootstrap-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
 
 # 統一ログ出力（標準出力 + ログファイル）
 function Write-Log {
@@ -103,11 +103,11 @@ function Ensure-ElevatedSelf {
 # 配布形式（exe / dll）どちらでも起動できるよう、実体を判定して返す。
 function Resolve-AppEntryPath {
     param([Parameter(Mandatory = $true)][string]$BaseDir)
-    $exePath = Join-Path $BaseDir "RadiKeep.exe"
+    $exePath = Join-Path $BaseDir "RadiCorder.exe"
     if (Test-Path -Path $exePath) { return $exePath }
-    $dllPath = Join-Path $BaseDir "RadiKeep.dll"
+    $dllPath = Join-Path $BaseDir "RadiCorder.dll"
     if (Test-Path -Path $dllPath) { return $dllPath }
-    throw "インストール先に RadiKeep.exe / RadiKeep.dll が見つかりません: $BaseDir"
+    throw "インストール先に RadiCorder.exe / RadiCorder.dll が見つかりません: $BaseDir"
 }
 
 # 1) winget 経由インストール
@@ -142,7 +142,7 @@ function Install-FfmpegByDirectDownload {
         "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
         "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.zip"
     )
-    $workDir = Join-Path $env:TEMP ("radikeep-ffmpeg-{0}" -f ([Guid]::NewGuid().ToString("N")))
+    $workDir = Join-Path $env:TEMP ("radicorder-ffmpeg-{0}" -f ([Guid]::NewGuid().ToString("N")))
     New-Item -ItemType Directory -Path $workDir -Force | Out-Null
     try {
         foreach ($url in $urls) {
@@ -190,9 +190,9 @@ function Resolve-FfmpegExecutablePath {
 }
 
 # アプリが読む設定ファイルに ffmpeg の絶対パスを保存する。
-function Get-DefaultRadiKeepSettingsObject {
+function Get-DefaultRadiCorderSettingsObject {
     return [pscustomobject]@{
-        RadiKeep = [pscustomobject]@{
+        RadiCorder = [pscustomobject]@{
             RecordFileSaveFolder = ''
             TemporaryFileSaveFolder = ''
             FfmpegExecutablePath = ''
@@ -203,28 +203,28 @@ function Get-DefaultRadiKeepSettingsObject {
     }
 }
 
-function Load-OrInitializeRadiKeepSettings {
+function Load-OrInitializeRadiCorderSettings {
     param([Parameter(Mandatory = $true)][string]$SettingsPath)
 
     if (Test-Path -Path $SettingsPath) {
         $json = Get-Content -Raw -Path $SettingsPath | ConvertFrom-Json
         if ($null -eq $json) {
-            Exit-WithCode -Code $ExitCodeInstall -Message "radikeep.settings.json の読み込みに失敗しました。"
+            Exit-WithCode -Code $ExitCodeInstall -Message "radicorder.settings.json の読み込みに失敗しました。"
         }
         return $json
     }
 
     $baseDir = Split-Path -Path $SettingsPath -Parent
-    $samplePath = Join-Path $baseDir "radikeep.settings.sample.json"
+    $samplePath = Join-Path $baseDir "radicorder.settings.sample.json"
     if (Test-Path -Path $samplePath) {
         $json = Get-Content -Raw -Path $samplePath | ConvertFrom-Json
         if ($null -eq $json) {
-            Exit-WithCode -Code $ExitCodeInstall -Message "radikeep.settings.sample.json の読み込みに失敗しました。"
+            Exit-WithCode -Code $ExitCodeInstall -Message "radicorder.settings.sample.json の読み込みに失敗しました。"
         }
         return $json
     }
 
-    return Get-DefaultRadiKeepSettingsObject
+    return Get-DefaultRadiCorderSettingsObject
 }
 
 function Set-FfmpegExecutablePathInSettings {
@@ -233,15 +233,15 @@ function Set-FfmpegExecutablePathInSettings {
         [Parameter(Mandatory = $true)][string]$ExecutablePath
     )
 
-    $json = Load-OrInitializeRadiKeepSettings -SettingsPath $SettingsPath
-    if (-not ($json.PSObject.Properties.Name -contains "RadiKeep")) {
-        $json | Add-Member -MemberType NoteProperty -Name "RadiKeep" -Value ([pscustomobject]@{})
+    $json = Load-OrInitializeRadiCorderSettings -SettingsPath $SettingsPath
+    if (-not ($json.PSObject.Properties.Name -contains "RadiCorder")) {
+        $json | Add-Member -MemberType NoteProperty -Name "RadiCorder" -Value ([pscustomobject]@{})
     }
 
-    $json.RadiKeep | Add-Member -MemberType NoteProperty -Name "FfmpegExecutablePath" -Value $ExecutablePath -Force
+    $json.RadiCorder | Add-Member -MemberType NoteProperty -Name "FfmpegExecutablePath" -Value $ExecutablePath -Force
     $out = $json | ConvertTo-Json -Depth 15
     [System.IO.File]::WriteAllText($SettingsPath, $out, [System.Text.UTF8Encoding]::new($false))
-    Write-Log ("RadiKeep.FfmpegExecutablePath を設定しました: {0}" -f $ExecutablePath)
+    Write-Log ("RadiCorder.FfmpegExecutablePath を設定しました: {0}" -f $ExecutablePath)
 }
 
 function Ensure-Ffmpeg {
@@ -306,7 +306,7 @@ function Get-RequiredDotNetRuntimeRequirements {
     param([Parameter(Mandatory = $true)][string]$TargetInstallDir)
 
     $requirements = @{}
-    $runtimeConfigPath = Join-Path $TargetInstallDir "RadiKeep.runtimeconfig.json"
+    $runtimeConfigPath = Join-Path $TargetInstallDir "RadiCorder.runtimeconfig.json"
 
     function Add-Requirement {
         param(
@@ -468,7 +468,7 @@ function Ensure-DotNetRuntime {
 }
 
 # SYSTEM 権限の「起動時実行」タスクとして登録する。
-function Register-RadiKeepScheduledTask {
+function Register-RadiCorderScheduledTask {
     param(
         [Parameter(Mandatory = $true)][string]$TaskName,
         [Parameter(Mandatory = $true)][string]$ExecutePath,
@@ -520,10 +520,10 @@ function Get-PrimaryIPv4Address {
 }
 
 # LAN アクセス想定のため、指定ポートの受信許可ルールを追加する。
-function Ensure-RadiKeepFirewallRule {
+function Ensure-RadiCorderFirewallRule {
     param([Parameter(Mandatory = $true)][int]$Port)
 
-    $ruleName = "RadiKeep TCP $Port"
+    $ruleName = "RadiCorder TCP $Port"
     $existing = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
     if ($null -ne $existing) {
         Write-Log ("Windows Firewall 受信規則は既に存在します: {0}" -f $ruleName)
@@ -543,7 +543,7 @@ function Ensure-RadiKeepFirewallRule {
 }
 
 # タスク起動後にヘルスチェックを行い、「登録だけ成功で実行失敗」を検出する。
-function Start-RadiKeepTaskAndCheckHealth {
+function Start-RadiCorderTaskAndCheckHealth {
     param(
         [Parameter(Mandatory = $true)][string]$TaskName,
         [Parameter(Mandatory = $true)][int]$Port
@@ -596,7 +596,7 @@ try {
     $installLogPath = Join-Path $logDir ("install-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
     Switch-LogFile -NewLogPath $installLogPath
 
-    Write-Log "RadiKeep のインストールを開始します。"
+    Write-Log "RadiCorder のインストールを開始します。"
     Write-Log ("インストール先: {0}" -f $InstallDir)
     Write-Log ("配置元ディレクトリ: {0}" -f $AppSourceDir)
 
@@ -633,19 +633,19 @@ try {
     # -------------------------------
     # 6. 設定書き込み・依存解決
     # -------------------------------
-    $settingsScriptPath = Join-Path $PSScriptRoot "set-radikeep-storage-settings.ps1"
+    $settingsScriptPath = Join-Path $PSScriptRoot "set-radicorder-storage-settings.ps1"
     if (-not (Test-Path -Path $settingsScriptPath)) { Exit-WithCode -Code $ExitCodeInstall -Message "設定スクリプトが見つかりません。" }
-    $settingsPath = Join-Path $InstallDir "radikeep.settings.json"
+    $settingsPath = Join-Path $InstallDir "radicorder.settings.json"
 
     try {
         & $settingsScriptPath -RecordDir $RecordDir -TempDir $TempDir -SettingsPath $settingsPath -CreateDirectories
     }
     catch {
-        Exit-WithCode -Code $ExitCodeInstall -Message ("radikeep.settings.json の更新に失敗しました: {0}" -f $_.Exception.Message)
+        Exit-WithCode -Code $ExitCodeInstall -Message ("radicorder.settings.json の更新に失敗しました: {0}" -f $_.Exception.Message)
     }
 
     Ensure-Ffmpeg -TargetInstallDir $InstallDir -SettingsPath $settingsPath -WingetEnabled $UseWingetForFfmpeg -DirectDownloadEnabled $UseDirectDownloadForFfmpeg -ChocolateyEnabled $UseChocolateyForFfmpeg -ExplicitFfmpegPath $FfmpegPath
-    Ensure-RadiKeepFirewallRule -Port $HttpPort
+    Ensure-RadiCorderFirewallRule -Port $HttpPort
 
     # -------------------------------
     # 7. タスク登録と起動確認
@@ -671,11 +671,11 @@ try {
     }
 
     Write-Log "タスクスケジューラへ登録しています..."
-    Register-RadiKeepScheduledTask -TaskName $ServiceName -ExecutePath $executePath -ArgumentText $argumentText -WorkingDir $InstallDir -Description $ServiceDescription
+    Register-RadiCorderScheduledTask -TaskName $ServiceName -ExecutePath $executePath -ArgumentText $argumentText -WorkingDir $InstallDir -Description $ServiceDescription
 
     if (-not $SkipServiceStart) {
         Write-Log "タスクを起動しています..."
-        Start-RadiKeepTaskAndCheckHealth -TaskName $ServiceName -Port $HttpPort
+        Start-RadiCorderTaskAndCheckHealth -TaskName $ServiceName -Port $HttpPort
     }
 
     # -------------------------------

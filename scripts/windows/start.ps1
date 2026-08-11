@@ -1,5 +1,5 @@
-﻿param(
-    [string]$ServiceName = "RadiKeep",
+param(
+    [string]$ServiceName = "RadiCorder",
     [int]$HttpPort = 8085,
     [int]$HealthTimeoutSec = 40
 )

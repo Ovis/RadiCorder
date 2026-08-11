@@ -4,8 +4,8 @@ set -e
 # purge 時のみ設定ファイルを削除する。
 # remove では設定を残し、再インストール時に復元できるようにする。
 if [ "$1" = "purge" ]; then
-  rm -f /etc/default/radikeep
-  rm -f /etc/radikeep/radikeep.settings.json
+  rm -f /etc/default/radicorder
+  rm -f /etc/radicorder/radicorder.settings.json
   if command -v db_purge >/dev/null 2>&1; then
     db_purge
   fi

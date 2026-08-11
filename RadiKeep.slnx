@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="RadiKeep.Logics.Tests/RadiKeep.Logics.Tests.csproj" />
-  <Project Path="RadiKeep.Logics/RadiKeep.Logics.csproj" />
-  <Project Path="RadiKeep/RadiKeep.csproj" />
-</Solution>

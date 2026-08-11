@@ -4,8 +4,8 @@ set -e
 # remove/deconfigure 時は、サービス残存による更新/削除失敗を防ぐため停止・無効化する。
 if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
   if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
-    systemctl stop radikeep.service || true
-    systemctl disable radikeep.service || true
+    systemctl stop radicorder.service || true
+    systemctl disable radicorder.service || true
     systemctl daemon-reload || true
   fi
 fi

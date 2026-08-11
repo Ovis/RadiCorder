@@ -1,6 +1,6 @@
-# RadiKeep
+# RadiCorder
 
-RadiKeep は、インターネットラジオ（radiko / らじる★らじる）の録音・再生・管理を行う個人向けWebアプリです。  
+RadiCorder は、インターネットラジオ（radiko / らじる★らじる）の録音・再生・管理を行う個人向けWebアプリです。  
 ブラウザから操作でき、PC・スマホの両方で利用できます。
 
 ## できること
@@ -60,7 +60,7 @@ RadiKeep は、インターネットラジオ（radiko / らじる★らじる�
 初回セットアップ:
 
 ```powershell
-cd .\RadiKeep
+cd .\RadiCorder
 npm install
 ```
 
@@ -68,39 +68,39 @@ npm install
 
 ```powershell
 npm run build
-dotnet build ..\RadiKeep.slnx -m:1 -v:m
-dotnet test ..\RadiKeep.slnx -m:1 -v:m
+dotnet build ..\RadiCorder.slnx -m:1 -v:m
+dotnet test ..\RadiCorder.slnx -m:1 -v:m
 ```
 
 補足:
 - `npm run build` 実行時に `hls.js` を `node_modules` から `wwwroot/lib/hls.js/hls.min.js` へ同期します（CDNは使用しません）。
-- 実行中の `RadiKeep.exe` があると `dotnet build` が失敗することがあります。必要に応じて先に停止してください。
+- 実行中の `RadiCorder.exe` があると `dotnet build` が失敗することがあります。必要に応じて先に停止してください。
 
 ## 配布物
 
 リリースページの Assets から、環境に合った配布物を利用してください。
 
 - Windows ZIP（x64）
-  - `RadiKeep-<version>-win-x64.zip`
+  - `RadiCorder-<version>-win-x64.zip`
 - Linux ZIP（x64 / arm64）
-  - `RadiKeep-<version>-linux-x64.zip`
-  - `RadiKeep-<version>-linux-arm64.zip`
+  - `RadiCorder-<version>-linux-x64.zip`
+  - `RadiCorder-<version>-linux-arm64.zip`
 - Windows インストーラー
-  - `RadiKeep-setup-<version>-fd.exe`（Framework-dependent）
-  - `RadiKeep-setup-<version>-sc.exe`（Self-contained）
+  - `RadiCorder-setup-<version>-fd.exe`（Framework-dependent）
+  - `RadiCorder-setup-<version>-sc.exe`（Self-contained）
 - Linux DEB（amd64 / arm64, fd / sc）
-  - `radikeep_<version>_amd64-fd.deb`
-  - `radikeep_<version>_arm64-fd.deb`
-  - `radikeep_<version>_amd64-sc.deb`
-  - `radikeep_<version>_arm64-sc.deb`
+  - `radicorder_<version>_amd64-fd.deb`
+  - `radicorder_<version>_arm64-fd.deb`
+  - `radicorder_<version>_amd64-sc.deb`
+  - `radicorder_<version>_arm64-sc.deb`
 - Docker イメージアーカイブ
-  - `RadiKeep-docker-<version>-linux-amd64.tar`
+  - `RadiCorder-docker-<version>-linux-amd64.tar`
 
 ## インストール（Windows）
 
 ### 1. インストーラーを使う（推奨）
 
-1. `RadiKeep-setup-...exe` を実行
+1. `RadiCorder-setup-...exe` を実行
 1. ウィザードでポート・録音保存先・一時ファイル保存先を指定
 1. 完了後、表示された URL にアクセス
 
@@ -117,8 +117,8 @@ pwsh .\scripts\windows\install.ps1 -HttpPort 8085
 ```
 
 主な既定値:
-- インストール先: `$env:LOCALAPPDATA\RadiKeep`
-- 起動方式: タスクスケジューラ（`RadiKeep` タスク）
+- インストール先: `$env:LOCALAPPDATA\RadiCorder`
+- 起動方式: タスクスケジューラ（`RadiCorder` タスク）
 - バインド: `0.0.0.0:<指定ポート>`
 
 ## インストール（Linux / Debian系）
@@ -126,7 +126,7 @@ pwsh .\scripts\windows\install.ps1 -HttpPort 8085
 ### 1. DEBパッケージ
 
 ```bash
-sudo apt install ./radikeep_<version>_<arch>-<variant>.deb
+sudo apt install ./radicorder_<version>_<arch>-<variant>.deb
 ```
 
 `variant`:
@@ -144,23 +144,23 @@ sudo apt install ./radikeep_<version>_<arch>-<variant>.deb
 - 一時ファイル保存先
 
 systemd:
-- サービス名: `radikeep.service`
+- サービス名: `radicorder.service`
 - 有効化/起動はインストール時に実行されます
 
 確認コマンド:
 
 ```bash
-sudo systemctl status radikeep.service --no-pager -l
+sudo systemctl status radicorder.service --no-pager -l
 ```
 
 ### 2. アンインストール（Linux）
 
 ```bash
 # 設定ファイルを残して削除
-sudo apt remove radikeep
+sudo apt remove radicorder
 
 # 設定ファイルも含めて完全削除
-sudo apt purge radikeep
+sudo apt purge radicorder
 ```
 
 ## Docker
@@ -168,15 +168,15 @@ sudo apt purge radikeep
 ### GHCRから利用
 
 ```bash
-docker pull ghcr.io/ovis/radikeep:<version>
-docker run -d --name radikeep -p 8085:8085 ghcr.io/ovis/radikeep:<version>
+docker pull ghcr.io/ovis/radicorder:<version>
+docker run -d --name radicorder -p 8085:8085 ghcr.io/ovis/radicorder:<version>
 ```
 
 ### tarアーカイブから利用
 
 ```bash
-docker load -i RadiKeep-docker-<version>-linux-amd64.tar
-docker run -d --name radikeep -p 8085:8085 ghcr.io/ovis/radikeep:<version>
+docker load -i RadiCorder-docker-<version>-linux-amd64.tar
+docker run -d --name radicorder -p 8085:8085 ghcr.io/ovis/radicorder:<version>
 ```
 
 補足:
@@ -199,25 +199,25 @@ docker run -d --name radikeep -p 8085:8085 ghcr.io/ovis/radikeep:<version>
 
 保存先ルートと一時保存先ルートは、起動前に設定します。
 
-`radikeep.settings.sample.json` を `radikeep.settings.json` として配置し、必要に応じて編集してください。
+`radicorder.settings.sample.json` を `radicorder.settings.json` として配置し、必要に応じて編集してください。
 
 補足:
-- Linux では、`radikeep.settings.json` と `/etc/radikeep/radikeep.settings.json` の両方が存在しない場合、初回起動時に実行ディレクトリへ `radikeep.settings.json` を自動生成します。
+- Linux では、`radicorder.settings.json` と `/etc/radicorder/radicorder.settings.json` の両方が存在しない場合、初回起動時に実行ディレクトリへ `radicorder.settings.json` を自動生成します。
 
-例（`radikeep.settings.json`）:
+例（`radicorder.settings.json`）:
 
 ```json
 {
-  "RadiKeep": {
-    "RecordFileSaveFolder": "D:\\RadiKeep\\record",
-    "TemporaryFileSaveFolder": "D:\\RadiKeep\\temp"
+  "RadiCorder": {
+    "RecordFileSaveFolder": "D:\\RadiCorder\\record",
+    "TemporaryFileSaveFolder": "D:\\RadiCorder\\temp"
   }
 }
 ```
 
 環境変数で上書きする場合:
-- `RadiKeep__RecordFileSaveFolder`
-- `RadiKeep__TemporaryFileSaveFolder`
+- `RadiCorder__RecordFileSaveFolder`
+- `RadiCorder__TemporaryFileSaveFolder`
 
 補足:
 - Web UIで変更できる設定値はDB（`AppConfiguration`）に保存され、起動後はそちらが優先されます。

@@ -1,0 +1,10 @@
+{
+  "RadiCorder": {
+    "RecordFileSaveFolder": "record",
+    "TemporaryFileSaveFolder": "temp",
+    "FfmpegExecutablePath": "",
+    "DbDirectory": "db",
+    "LogDirectory": "logs",
+    "DataProtectionKeysPath": "keys"
+  }
+}

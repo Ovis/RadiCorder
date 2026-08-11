@@ -1,23 +1,23 @@
 services:
-  radikeep:
+  radicorder:
     build:
       context: .
-      dockerfile: RadiKeep/Dockerfile
-    container_name: radikeep
+      dockerfile: RadiCorder/Dockerfile
+    container_name: radicorder
     ports:
       - "8085:8085"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8085
-      - RadiKeep__DbDirectory=/app/db
-      - RadiKeep__LogDirectory=/app/logs
-      - RadiKeep__DataProtectionKeysPath=/app/keys
-      - RadiKeep__RecordFileSaveFolder=/app/record
-      - RadiKeep__TemporaryFileSaveFolder=/app/temp
+      - RadiCorder__DbDirectory=/app/db
+      - RadiCorder__LogDirectory=/app/logs
+      - RadiCorder__DataProtectionKeysPath=/app/keys
+      - RadiCorder__RecordFileSaveFolder=/app/record
+      - RadiCorder__TemporaryFileSaveFolder=/app/temp
       - Logging__LogLevel__Default=Information
       - Logging__LogLevel__Microsoft.AspNetCore=Warning
       - Logging__LogLevel__Microsoft.EntityFrameworkCore=Warning
-      - Logging__LogLevel__RadiKeep.Logics=Information
+      - Logging__LogLevel__RadiCorder.Logics=Information
     volumes:
       - ./db:/app/db
       - ./logs:/app/logs

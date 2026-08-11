@@ -1,6 +1,6 @@
-﻿param(
-    [string]$InstallDir = "$env:LOCALAPPDATA\RadiKeep",
-    [string]$ServiceName = "RadiKeep",
+param(
+    [string]$InstallDir = "$env:LOCALAPPDATA\RadiCorder",
+    [string]$ServiceName = "RadiCorder",
     [switch]$RemoveData
 )
 

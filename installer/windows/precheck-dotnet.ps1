@@ -1,7 +1,7 @@
-﻿param(
+param(
     [Parameter(Mandatory = $true)]
     [string]$RuntimeConfigPath,
-    [string]$LogPath = "$env:TEMP\radikeep-dotnet-precheck.log"
+    [string]$LogPath = "$env:TEMP\radicorder-dotnet-precheck.log"
 )
 
 Set-StrictMode -Version Latest

@@ -1,0 +1,35 @@
+[Unit]
+Description=RadiCorder Web Application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# 専用ユーザーで実行し、書き込み先は ReadWritePaths に限定する。
+Type=simple
+User=radicorder
+Group=radicorder
+WorkingDirectory=/opt/radicorder
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=RADIKEEP_BIND_ADDRESS=0.0.0.0
+Environment=RADIKEEP_PORT=8085
+Environment=ASPNETCORE_URLS=http://0.0.0.0:8085
+Environment=RadiCorder__DbDirectory=/var/lib/radicorder/db
+Environment=RadiCorder__LogDirectory=/var/log/radicorder
+Environment=RadiCorder__DataProtectionKeysPath=/var/lib/radicorder/keys
+Environment=RadiCorder__RecordFileSaveFolder=/var/lib/radicorder/record
+Environment=RadiCorder__TemporaryFileSaveFolder=/var/lib/radicorder/temp
+# /etc/default/radicorder でポートや保存先を上書き可能。
+EnvironmentFile=-/etc/default/radicorder
+ExecStart=/opt/radicorder/start-radicorder.sh
+Restart=always
+RestartSec=5
+# systemd hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/radicorder /var/log/radicorder /etc/radicorder
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

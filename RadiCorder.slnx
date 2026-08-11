@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RadiCorder.Logics.Tests/RadiCorder.Logics.Tests.csproj" />
+  <Project Path="RadiCorder.Logics/RadiCorder.Logics.csproj" />
+  <Project Path="RadiCorder/RadiCorder.csproj" />
+</Solution>

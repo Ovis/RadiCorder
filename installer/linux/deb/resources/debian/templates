@@ -1,17 +1,17 @@
-Template: radikeep/port
+Template: radicorder/port
 Type: string
 Default: 8085
-Description: RadiKeep のポート番号
- RadiKeep が待ち受けるポート番号を指定してください。
+Description: RadiCorder のポート番号
+ RadiCorder が待ち受けるポート番号を指定してください。
 
-Template: radikeep/record_dir
+Template: radicorder/record_dir
 Type: string
-Default: /var/lib/radikeep/record
+Default: /var/lib/radicorder/record
 Description: 録音ファイル保存先
- RadiKeep の録音ファイル保存先ディレクトリを指定してください。
+ RadiCorder の録音ファイル保存先ディレクトリを指定してください。
 
-Template: radikeep/temp_dir
+Template: radicorder/temp_dir
 Type: string
-Default: /var/lib/radikeep/temp
+Default: /var/lib/radicorder/temp
 Description: 一時ファイル保存先
- RadiKeep の一時ファイル保存先ディレクトリを指定してください。
+ RadiCorder の一時ファイル保存先ディレクトリを指定してください。

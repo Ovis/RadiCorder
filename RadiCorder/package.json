@@ -1,0 +1,22 @@
+{
+  "name": "RadiCorder",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm run sync:vendors && tsc && npm run build:css && npm run build:scss",
+    "build:css": "tailwindcss -i ./Styles/tailwind.css -o ./wwwroot/css/site.css --minify",
+    "build:scss": "node ./Scripts/build-scss.mjs",
+    "sync:vendors": "node ./Scripts/sync-vendor-assets.mjs",
+    "generate:openapi": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./Scripts/generate-openapi.ps1",
+    "generate:api-types": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./Scripts/generate-api-types.ps1"
+  },
+  "devDependencies": {
+    "sass": "^1.97.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7",
+    "hls.js": "^1.6.15",
+    "ts-node": "^10.9.2"
+  }
+}

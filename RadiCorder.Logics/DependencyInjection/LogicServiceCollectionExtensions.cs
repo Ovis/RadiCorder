@@ -137,6 +137,7 @@ public static class LogicServiceCollectionExtensions
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
         services.AddScoped<StationLobLogic>();
         services.AddScoped<ProgramScheduleLobLogic>();
+        services.AddScoped<ProgramSearchService>();
         services.AddScoped<ProgramUpdateRunner>();
         services.AddScoped<RecordedProgramQueryService>();
         services.AddScoped<RecordedProgramMediaService>();

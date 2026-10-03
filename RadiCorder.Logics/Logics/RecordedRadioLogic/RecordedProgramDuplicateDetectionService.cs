@@ -1,14 +1,9 @@
 using RadiCorder.Logics.Domain.DuplicateDetection;
 using RadiCorder.Logics.Infrastructure.Recording;
-using System.Diagnostics;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Domain.Recording;
-using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.RdbContext;
 using RadiCorder.Logics.Services;

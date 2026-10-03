@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Domain.AppEvent;
-using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Domain.Recording;
 using ZLogger;
 

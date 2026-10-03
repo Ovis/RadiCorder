@@ -4,16 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.FileProviders;
 using RadiCorder.Application;
 using RadiCorder.DependencyInjection;
-using RadiCorder.Endpoints;
 using RadiCorder.Filters;
-using RadiCorder.Features.Recording;
-using RadiCorder.Features.Notification;
-using RadiCorder.Features.General;
-using RadiCorder.Hubs;
-using RadiCorder.Features.Tag;
-using RadiCorder.Features.Reserve;
-using RadiCorder.Features.Program;
-using RadiCorder.Features.Setting;
 using RadiCorder.Logics.Infrastructure.Recording;
 using RadiCorder.Logics.Logics;
 using RadiCorder.Logics.RdbContext;
@@ -131,30 +122,7 @@ if (app.Environment.IsDevelopment())
 #pragma warning disable ASP0014
 app.UseEndpoints(endpoints =>
 {
-    endpoints.MapApiEndpoints();
-    endpoints.MapGeneralEndpoints();
-    endpoints.MapProgramEndpoints();
-    endpoints.MapSettingEndpoints();
-    endpoints.MapExternalImportEndpoints();
-    endpoints.MapRecordingEndpoints();
-    endpoints.MapNotificationEndpoints();
-    endpoints.MapTagEndpoints();
-    endpoints.MapReserveEndpoints();
-    endpoints.MapHub<RecordingHub>("/hubs/recordings");
-    endpoints.MapHub<NotificationHub>("/hubs/notifications");
-    endpoints.MapHub<ReserveHub>("/hubs/reserves");
-    endpoints.MapHub<ProgramUpdateHub>("/hubs/program-updates");
-    endpoints.MapHub<AppEventHub>("/hubs/app-events");
-    endpoints.MapHub<RecordedDuplicateDetectionHub>("/hubs/duplicate-detection");
-
-    endpoints.MapControllerRoute(
-        name: "areas",
-        pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}"
-    );
-
-    endpoints.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}");
+    endpoints.MapRadiCorderEndpoints();
 });
 #pragma warning restore ASP0014
 

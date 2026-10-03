@@ -1,8 +1,5 @@
 using RadiCorder.Logics.Services.Streaming;
-using System;
 using System.Net;
-using Microsoft.EntityFrameworkCore;
-using RadiCorder.Logics.Domain.AppEvent;
 using RadiCorder.Logics.ApiClients;
 using RadiCorder.Logics.Application;
 using RadiCorder.Logics.BackgroundServices;
@@ -12,7 +9,6 @@ using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Domain.Reserve;
 using RadiCorder.Logics.Domain.Recording;
 using RadiCorder.Logics.Domain.Station;
-using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Infrastructure.Recording;
 using RadiCorder.Logics.Infrastructure.Notification;
 using RadiCorder.Logics.Infrastructure.ProgramSchedule;
@@ -31,11 +27,8 @@ using RadiCorder.Logics.Logics.ReserveLogic;
 using RadiCorder.Logics.Logics.StationLogic;
 using RadiCorder.Logics.Logics.TagLogic;
 using RadiCorder.Logics.Mappers;
-using RadiCorder.Logics.Options;
-using RadiCorder.Logics.RdbContext;
 using RadiCorder.Logics.Services;
 using RadiCorder.Logics.UseCases.Recording;
-using ZLogger;
 
 using Microsoft.Extensions.DependencyInjection;
 

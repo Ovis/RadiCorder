@@ -1,11 +1,7 @@
 using RadiCorder.Logics.Domain.Recording;
-using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Logics.NotificationLogic;
-using RadiCorder.Logics.Logics.ProgramScheduleLogic;
 using RadiCorder.Logics.Logics.RecordingLogic;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.RdbContext;

@@ -1,6 +1,4 @@
-using static RadiCorder.Logics.Infrastructure.Configuration.AppConfigurationValues;
 using System.Collections.Concurrent;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +10,6 @@ using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Models.NhkRadiru;
 using RadiCorder.Logics.Options;
 using RadiCorder.Logics.Primitives;
-using RadiCorder.Logics.Primitives.DataAnnotations;
 using RadiCorder.Logics.RdbContext;
 using ZLogger;
 

@@ -1,3 +1,4 @@
+using RadiCorder.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -7,15 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RadiCorder.DependencyInjection;
-using RadiCorder.Endpoints;
 using RadiCorder.Features.Program;
-using RadiCorder.Features.Recording;
-using RadiCorder.Features.Notification;
-using RadiCorder.Features.General;
-using RadiCorder.Features.Tag;
-using RadiCorder.Features.Reserve;
-using RadiCorder.Features.Setting;
-using RadiCorder.Hubs;
 using RadiCorder.Logics.RdbContext;
 using RadiCorder.Logics.Services;
 
@@ -70,38 +63,10 @@ internal sealed class WebTestHost : IAsyncDisposable
         {
             await scope.ServiceProvider.GetRequiredService<RadioDbContext>().Database.MigrateAsync();
         }
-        MapEndpoints(App);
+        App.MapRadiCorderEndpoints();
         App.MapOpenApi();
         await App.StartAsync();
         Client = new HttpClient { BaseAddress = new Uri(App.Urls.Single()) };
-    }
-
-    private static void MapEndpoints(WebApplication endpoints)
-    {
-    endpoints.MapApiEndpoints();
-    endpoints.MapGeneralEndpoints();
-    endpoints.MapProgramEndpoints();
-    endpoints.MapSettingEndpoints();
-    endpoints.MapExternalImportEndpoints();
-    endpoints.MapRecordingEndpoints();
-    endpoints.MapNotificationEndpoints();
-    endpoints.MapTagEndpoints();
-    endpoints.MapReserveEndpoints();
-    endpoints.MapHub<RecordingHub>("/hubs/recordings");
-    endpoints.MapHub<NotificationHub>("/hubs/notifications");
-    endpoints.MapHub<ReserveHub>("/hubs/reserves");
-    endpoints.MapHub<ProgramUpdateHub>("/hubs/program-updates");
-    endpoints.MapHub<AppEventHub>("/hubs/app-events");
-    endpoints.MapHub<RecordedDuplicateDetectionHub>("/hubs/duplicate-detection");
-
-    endpoints.MapControllerRoute(
-        name: "areas",
-        pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}"
-    );
-
-    endpoints.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}");
     }
 
     public async ValueTask DisposeAsync()

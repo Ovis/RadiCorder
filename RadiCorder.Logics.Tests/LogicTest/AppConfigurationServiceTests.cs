@@ -219,4 +219,32 @@ public class AppConfigurationServiceTests
 
         Assert.That(stationName, Is.EqualTo("不明局(MAJAL)"));
     }
+    /// <summary>
+    /// 資格情報の2項目目が保存できない場合、DBと公開状態を更新前に保つ。
+    /// </summary>
+    [Test]
+    public async Task UpdateRadikoCredentialsAsync_途中の保存失敗では全体をロールバックする()
+    {
+        var service = CreateService();
+        await service.UpdateRadikoCredentialsAsync("old-user", "old-password");
+        using (var scope = _provider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RadioDbContext>();
+            await db.Database.ExecuteSqlRawAsync("""
+                CREATE TRIGGER RejectCredentialUpdate BEFORE UPDATE ON AppConfigurations
+                WHEN NEW.ConfigurationName = 'RadikoPasswordProtected'
+                BEGIN SELECT RAISE(ABORT, 'injected failure'); END;
+                """);
+        }
+        Assert.ThrowsAsync<DbUpdateException>(async () => await service.UpdateRadikoCredentialsAsync("new-user", "new-password"));
+        var (success, userId, password) = await service.TryGetRadikoCredentialsAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.True);
+            Assert.That(userId, Is.EqualTo("old-user"));
+            Assert.That(password, Is.EqualTo("old-password"));
+            Assert.That(service.RadikoOptions.RadikoUserId, Is.EqualTo("old-user"));
+            Assert.That(service.HasRadikoCredentials, Is.True);
+        });
+    }
 }

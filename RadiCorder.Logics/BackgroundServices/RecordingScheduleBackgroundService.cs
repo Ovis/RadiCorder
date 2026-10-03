@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Domain.Recording;
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,6 @@ public class RecordingScheduleBackgroundService(
 {
     private static readonly TimeSpan PeriodicScanInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StartupRecoveryTimeout = TimeSpan.FromHours(2);
-    private static readonly TimeSpan TimeFreeReadyLeadTime = TimeSpan.FromMinutes(3);
     private static readonly ConcurrentDictionary<Ulid, byte> RunningJobMap = new();
 
     /// <summary>
@@ -324,7 +324,7 @@ public class RecordingScheduleBackgroundService(
 
             if (!isSuccess)
             {
-                await MarkJobFailedAsync(dbContext, job, ClassifyError(error), error?.Message, cancellationToken);
+                await MarkJobFailedAsync(dbContext, job, RecordingJobErrorClassifier.ClassifyError(error), error?.Message, cancellationToken);
                 return;
             }
 
@@ -355,7 +355,7 @@ public class RecordingScheduleBackgroundService(
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"録音ジョブ実行で例外が発生しました。 jobId={jobId}");
-            await MarkJobFailedAsync(dbContext, job, ClassifyError(ex), ex.Message, cancellationToken);
+            await MarkJobFailedAsync(dbContext, job, RecordingJobErrorClassifier.ClassifyError(ex), ex.Message, cancellationToken);
         }
         finally
         {
@@ -392,7 +392,7 @@ public class RecordingScheduleBackgroundService(
     private DateTimeOffset ResolvePrepareStartUtc(ScheduleJob job)
     {
         var fireAtUtc = ResolveFireAtUtc(job);
-        return fireAtUtc.AddSeconds(-10);
+        return fireAtUtc - RecordingScheduleTiming.PreparingLeadTime;
     }
 
     /// <summary>
@@ -400,70 +400,11 @@ public class RecordingScheduleBackgroundService(
     /// </summary>
     private DateTimeOffset ResolveFireAtUtc(ScheduleJob job)
     {
-        var startDelaySeconds = job.StartDelay?.TotalSeconds ?? appConfigurationService.RecordStartDuration.TotalSeconds;
+        var startDelay = job.StartDelay ?? appConfigurationService.RecordStartDuration;
         var nowUtc = DateTimeOffset.UtcNow;
-        var timeFreeReadyAtUtc = job.EndDateTime.ToUniversalTime().Add(TimeFreeReadyLeadTime);
-        return job.RecordingType switch
-        {
-            RecordingType.TimeFree => timeFreeReadyAtUtc > nowUtc ? timeFreeReadyAtUtc : nowUtc,
-            RecordingType.OnDemand => nowUtc,
-            RecordingType.Immediate => nowUtc,
-            RecordingType.RealTime => job.StartDateTime.AddSeconds(-startDelaySeconds).AddSeconds(-1).ToUniversalTime(),
-            _ => nowUtc
-        };
+        return RecordingScheduleTiming.ResolveFireAtUtc(
+            job.RecordingType, job.StartDateTime, job.EndDateTime, startDelay, nowUtc)
+            ?? nowUtc;
     }
 
-    /// <summary>
-    /// 例外を失敗分類へ変換する。
-    /// </summary>
-    private static ScheduleJobErrorCode ClassifyError(Exception? exception)
-    {
-        if (exception == null)
-        {
-            return ScheduleJobErrorCode.Unknown;
-        }
-
-        if (exception is OperationCanceledException)
-        {
-            return ScheduleJobErrorCode.Cancelled;
-        }
-
-        var message = exception.Message;
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return ScheduleJobErrorCode.Unknown;
-        }
-
-        if (message.Contains("認証", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("login", StringComparison.OrdinalIgnoreCase))
-        {
-            return ScheduleJobErrorCode.AuthFailed;
-        }
-
-        if (message.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase))
-        {
-            return ScheduleJobErrorCode.FfmpegFailed;
-        }
-
-        if (message.Contains("disk", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("容量", StringComparison.OrdinalIgnoreCase))
-        {
-            return ScheduleJobErrorCode.DiskFull;
-        }
-
-        if (message.Contains("io", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("I/O", StringComparison.OrdinalIgnoreCase))
-        {
-            return ScheduleJobErrorCode.IoError;
-        }
-
-        if (message.Contains("source", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("playlist", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("配信", StringComparison.OrdinalIgnoreCase))
-        {
-            return ScheduleJobErrorCode.SourceUnavailable;
-        }
-
-        return ScheduleJobErrorCode.Unknown;
-    }
 }

@@ -1,7 +1,7 @@
+using RadiCorder.Logics.Infrastructure.Import;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using System.Reflection;
 using RadiCorder.Logics.Logics.RecordedRadioLogic;
 using RadiCorder.Logics.Logics.TagLogic;
 using RadiCorder.Logics.Models.ExternalImport;
@@ -227,16 +227,9 @@ public class ExternalRecordingImportLobLogicTests : UnitTestBase
             return;
         }
 
-        var method = typeof(ExternalRecordingImportLobLogic)
-            .GetMethod("TryResolveManagedFilePath", BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.That(method, Is.Not.Null);
-
-        var args = new object[] { "nested/file.mp3", @"\\server\share\record", string.Empty, string.Empty };
-        var result = (bool)method!.Invoke(null, args)!;
-
+        var result = ExternalImportPaths.TryResolveManagedFilePath(
+            "nested/file.mp3", @"\\server\share\record", out var fullPath, out var relativePath);
         Assert.That(result, Is.True);
-        var fullPath = args[2] as string;
-        var relativePath = args[3] as string;
         Assert.That(fullPath, Does.EndWith(@"record\nested\file.mp3"));
         Assert.That(relativePath, Is.EqualTo(@"nested\file.mp3"));
     }

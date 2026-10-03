@@ -1,0 +1,110 @@
+using System.Net;
+using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using RadiCorder.Logics.Application;
+using RadiCorder.Logics.Services;
+
+namespace RadiCorder.Web.Tests;
+
+public class RadikoStreamingTests
+{
+    [TestCase("/api/programs/radiko-proxy")]
+    [TestCase("/api/programs/radiko-proxy/master.m3u8")]
+    public async Task Proxy_既存のルートとticketとplaylist応答を維持する(string route)
+    {
+        await using var host = new WebTestHost();
+        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.Radiko)
+            .ConfigurePrimaryHttpMessageHandler(() => new FixtureHandler()));
+        var ticket = host.App.Services.GetRequiredService<IRadikoProxyTicketService>().IssueTokenTicket("fixture-token");
+        using var response = await host.Client.GetAsync($"{route}?target={Uri.EscapeDataString("https://radiko.jp/media.m3u8")}&proxyKey={ticket}");
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/vnd.apple.mpegurl"));
+            Assert.That(content, Does.Contain($"proxyKey={ticket}"));
+            Assert.That(content, Does.Contain(Uri.EscapeDataString("https://radiko.jp/segment.aac")));
+            Assert.That(content, Does.Not.Contain("fixture-token"));
+        });
+    }
+
+    [TestCase("https://example.com/media.m3u8", "valid", "Invalid proxy target.")]
+    [TestCase("https://radiko.jp/media.m3u8", "expired", "Invalid proxy credential.")]
+    public async Task Proxy_入力エラーのHTTP状態と本文を維持する(string target, string credential, string message)
+    {
+        await using var host = new WebTestHost();
+        await host.StartAsync();
+        var ticket = credential == "valid"
+            ? host.App.Services.GetRequiredService<IRadikoProxyTicketService>().IssueTokenTicket("fixture-token")
+            : "expired";
+        using var response = await host.Client.GetAsync($"/api/programs/radiko-proxy?target={Uri.EscapeDataString(target)}&proxyKey={ticket}");
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That(System.Text.Json.JsonSerializer.Deserialize<string>(await response.Content.ReadAsStringAsync()), Is.EqualTo(message));
+    }
+
+    [TestCase("live", 200, "application/vnd.apple.mpegurl")]
+    [TestCase("binary", 200, "audio/aac")]
+    [TestCase("upstream-error", 503, null)]
+    public async Task Proxy_ライブ解決とバイナリ中継と上流エラーを維持する(string mode, int status, string? mediaType)
+    {
+        var targets = new List<string>();
+        await using var host = new WebTestHost();
+        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.Radiko)
+            .ConfigurePrimaryHttpMessageHandler(() => new PlaylistChainHandler(mode, targets)));
+        var ticket = host.App.Services.GetRequiredService<IRadikoProxyTicketService>().IssueTokenTicket("fixture-token");
+        var target = mode == "binary" ? "https://radiko.jp/live/segment.aac" : "https://radiko.jp/master.m3u8";
+        using var response = await host.Client.GetAsync($"/api/programs/radiko-proxy?target={Uri.EscapeDataString(target)}&proxyKey={ticket}&resolveLivePlaylist={(mode == "live" ? "true" : "false")}");
+        Assert.That((int)response.StatusCode, Is.EqualTo(status));
+        if (mediaType != null)
+        {
+            Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo(mediaType));
+        }
+        if (mode == "live")
+        {
+            Assert.That(targets, Is.EqualTo(new[] { "/master.m3u8", "/live/media.m3u8" }));
+            Assert.That(await response.Content.ReadAsStringAsync(), Does.Contain(Uri.EscapeDataString("https://radiko.jp/live/segment.aac")));
+        }
+        else if (mode == "binary")
+        {
+            Assert.That(await response.Content.ReadAsByteArrayAsync(), Is.EqualTo(new byte[] { 0, 1, 2, 255 }));
+        }
+    }
+
+    private sealed class PlaylistChainHandler(string mode, List<string> targets) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            targets.Add(request.RequestUri!.AbsolutePath);
+            Assert.That(request.Headers.GetValues("X-Radiko-Authtoken").Single(), Is.EqualTo("fixture-token"));
+            if (mode == "upstream-error")
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+            }
+            if (mode == "binary")
+            {
+                var content = new ByteArrayContent([0, 1, 2, 255]);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/aac");
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(targets.Count == 1
+                    ? "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=96000\nlive/media.m3u8\n"
+                    : "#EXTM3U\n#EXTINF:5,\nsegment.aac\n", Encoding.UTF8, "application/vnd.apple.mpegurl")
+            });
+        }
+    }
+
+    private sealed class FixtureHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Assert.That(request.Headers.GetValues("X-Radiko-Authtoken").Single(), Is.EqualTo("fixture-token"));
+            Assert.That(request.Headers.GetValues("User-Agent").Single(), Is.EqualTo("RadiCorder-fixture"));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("#EXTM3U\n#EXTINF:5,\nsegment.aac\n", Encoding.UTF8, "application/vnd.apple.mpegurl")
+            });
+        }
+    }
+}

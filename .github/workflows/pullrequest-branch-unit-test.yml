@@ -32,4 +32,4 @@ jobs:
         run: dotnet build --configuration Release RadiCorder/RadiCorder.csproj
 
       - name: Test RadiCorder
-        run: dotnet test --configuration Release --verbosity normal RadiCorder.Logics.Tests/RadiCorder.Logics.Tests.csproj
+        run: dotnet test --configuration Release --verbosity normal RadiCorder.slnx

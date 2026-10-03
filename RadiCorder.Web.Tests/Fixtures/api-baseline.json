@@ -1,0 +1,5659 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "RadiCorder, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/general/radio-dates": {
+      "get": {
+        "tags": [
+          "GeneralApi"
+        ],
+        "summary": "\u756A\u7D44\u8868\u3067\u9078\u629E\u53EF\u80FD\u306A\u65E5\u4ED8\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiGeneralRadioDates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfRadioDateEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/stations/radiko": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "radiko\u653E\u9001\u5C40\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramStationsRadiko",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfDictionaryOfstringAndListOfRadikoStationInformationEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/stations/radiru": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u3089\u3058\u308B\u653E\u9001\u5C40\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramStationsRadiru",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfDictionaryOfstringAndListOfRadiruStationEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/list/radiko": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "radiko\u756A\u7D44\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramListRadiko",
+        "parameters": [
+          {
+            "name": "d",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfRadioProgramEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/list/radiru": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u3089\u3058\u308B\u756A\u7D44\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramListRadiru",
+        "parameters": [
+          {
+            "name": "d",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "a",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfRadioProgramEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/now": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u73FE\u5728\u653E\u9001\u4E2D\u306E\u756A\u7D44\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramNow",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfProgramNowOnAirResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/detail": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u8A73\u7D30\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRadioProgramEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/search": {
+      "post": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u3092\u691C\u7D22\u3059\u308B",
+        "operationId": "ApiProgramSearch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramSearchEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfIEnumerableOfProgramForApiEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/keyword-reserve": {
+      "post": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u3092\u767B\u9332\u3059\u308B",
+        "operationId": "ApiProgramKeywordReserve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeywordReserveEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/update": {
+      "post": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u8868\u66F4\u65B0\u30B8\u30E7\u30D6\u3092\u8D77\u52D5\u3059\u308B",
+        "operationId": "ApiProgramUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/update-status": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u8868\u66F4\u65B0\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramUpdateStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfProgramUpdateStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/reserve": {
+      "post": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u9332\u97F3\u4E88\u7D04\u3092\u767B\u9332\u3059\u308B",
+        "operationId": "ApiProgramReserve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramInformationRequestEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/play": {
+      "post": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "\u756A\u7D44\u518D\u751F\u60C5\u5831\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiProgramPlay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramInformationRequestEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfProgramPlaybackInfoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/radiko-proxy": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "radiko HLS \u3092\u540C\u4E00\u30AA\u30EA\u30B8\u30F3\u7D4C\u7531\u3067\u4E2D\u7D99\u3059\u308B",
+        "operationId": "ApiProgramRadikoProxy",
+        "parameters": [
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "proxyKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resolveLivePlaylist",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "recordingStartUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/programs/radiko-proxy/{hint}": {
+      "get": {
+        "tags": [
+          "ProgramsApi"
+        ],
+        "summary": "radiko HLS \u3092\u540C\u4E00\u30AA\u30EA\u30B8\u30F3\u7D4C\u7531\u3067\u4E2D\u7D99\u3059\u308B",
+        "operationId": "ApiProgramRadikoProxyWithHint",
+        "parameters": [
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "proxyKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resolveLivePlaylist",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "recordingStartUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/settings/record-directory": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u756A\u7D44\u306E\u4FDD\u5B58\u5148\u30D5\u30A9\u30EB\u30C0\u30D1\u30B9\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingRecordDirectory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordDirectoryPathEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/record-filename": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u756A\u7D44\u9332\u97F3\u6642\u306E\u30D5\u30A1\u30A4\u30EB\u540D\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingRecordFilename",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordFileNameTemplateEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/duration": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6642\u9593\u306E\u30DE\u30FC\u30B8\u30F3\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingDuration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDurationEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/radiru-area": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u3089\u3058\u308B\u30A8\u30EA\u30A2\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingRadiruArea",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRadiruAreaEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/notice": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u901A\u77E5\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingNotice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationSettingEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/unread-badge-notice-categories": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u672A\u8AAD\u30D0\u30C3\u30B8\u4EF6\u6570\u5BFE\u8C61\u30AB\u30C6\u30B4\u30EA\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingUnreadBadgeCategories",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUnreadBadgeNoticeCategoriesEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-service-user-agent": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u5916\u90E8\u30B5\u30FC\u30D3\u30B9\u63A5\u7D9A\u6642\u306EUser-Agent\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingExternalUserAgent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExternalServiceUserAgentEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-service-radiru-request": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u3089\u3058\u308BAPI\u30A2\u30AF\u30BB\u30B9\u9593\u9694\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingRadiruRequest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRadiruRequestSettingsEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/radiko-login": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "radiko\u30ED\u30B0\u30A4\u30F3\u60C5\u5831\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingRadikoLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRadikoLoginEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/radiko-logout": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "radiko\u30ED\u30B0\u30A4\u30F3\u60C5\u5831\u3092\u524A\u9664\u3059\u308B",
+        "operationId": "ApiSettingRadikoLogout",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/radiko-area/refresh": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "radiko\u30A8\u30EA\u30A2\u60C5\u5831\u3092\u5F37\u5236\u518D\u5224\u5B9A\u3059\u308B",
+        "operationId": "ApiSettingRadikoAreaRefresh",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import-timezone": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u5916\u90E8\u53D6\u8FBC\u6642\u306E\u30D5\u30A1\u30A4\u30EB\u66F4\u65B0\u65E5\u6642\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingExternalImportTimeZone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExternalImportTimeZoneEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/storage-low-space-threshold": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u4FDD\u5B58\u5148\u30B9\u30C8\u30EC\u30FC\u30B8\u7A7A\u304D\u5BB9\u91CF\u4E0D\u8DB3\u901A\u77E5\u3057\u304D\u3044\u5024\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingStorageLowSpaceThreshold",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStorageLowSpaceThresholdEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/monitoring-advanced": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u76E3\u8996\u95A2\u9023\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingMonitoringAdvanced",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMonitoringAdvancedEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/clock-skew-monitoring": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "NTP\u6642\u523B\u305A\u308C\u76E3\u8996\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingClockSkewMonitoring",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClockSkewMonitoringEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/merge-tags-from-matched-rules": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u8907\u6570\u30AD\u30FC\u30EF\u30FC\u30C9\u4E00\u81F4\u6642\u306E\u30BF\u30B0\u96C6\u7D04\u4ED8\u4E0E\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingMergeTagsFromMatchedRules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMergeTagsFromMatchedRulesEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/embed-program-image-on-record": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6642\u306E\u756A\u7D44\u30A4\u30E1\u30FC\u30B8\u57CB\u3081\u8FBC\u307F\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingEmbedProgramImageOnRecord",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmbedProgramImageOnRecordEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/resume-playback-across-pages": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u30DA\u30FC\u30B8\u9077\u79FB\u6642\u306E\u518D\u751F\u5FA9\u5E30\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingResumePlaybackAcrossPages",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResumePlaybackAcrossPagesEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/release-check-interval": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u65B0\u3057\u3044\u30EA\u30EA\u30FC\u30B9\u78BA\u8A8D\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingReleaseCheckInterval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReleaseCheckIntervalEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/duplicate-detection-interval": {
+      "post": {
+        "tags": [
+          "SettingsApi"
+        ],
+        "summary": "\u985E\u4F3C\u9332\u97F3\u62BD\u51FA\u306E\u5B9A\u671F\u5B9F\u884C\u8A2D\u5B9A\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiSettingDuplicateDetectionInterval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDuplicateDetectionIntervalEntity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/scan": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u9332\u97F3\u4FDD\u5B58\u5148\u3092\u30B9\u30AD\u30E3\u30F3\u3057\u3066\u672A\u767B\u9332\u5019\u88DC\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiExternalImportScan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExternalImportScanRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfExternalImportCandidateEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/export-csv": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u5019\u88DC\u4E00\u89A7\u3092CSV\u3067\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3059\u308B",
+        "operationId": "ApiExternalImportExportCsv",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalImportCandidatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/import-csv": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "CSV\u3092\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u3057\u3066\u5019\u88DC\u4E00\u89A7\u3092\u518D\u69CB\u7BC9\u3059\u308B",
+        "operationId": "ApiExternalImportImportCsv",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfExternalImportCandidateEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/save": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u5019\u88DC\u3092\u9332\u97F3\u6E08\u307F\u756A\u7D44\u3078\u4FDD\u5B58\u3059\u308B",
+        "operationId": "ApiExternalImportSave",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalImportCandidatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfExternalImportSaveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfExternalImportSaveResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/maintenance/scan-missing": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u9332\u97F3\u30D5\u30A1\u30A4\u30EB\u6B20\u640D\u30EC\u30B3\u30FC\u30C9\u3092\u30B9\u30AD\u30E3\u30F3\u3059\u308B",
+        "operationId": "ApiExternalImportScanMissing",
+        "parameters": [
+          {
+            "name": "silent",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordingFileMaintenanceScanResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/maintenance/relink-missing": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u6B20\u640D\u30EC\u30B3\u30FC\u30C9\u306E\u30D5\u30A1\u30A4\u30EB\u518D\u7D10\u4ED8\u3051\u3092\u5B9F\u884C\u3059\u308B",
+        "operationId": "ApiExternalImportRelinkMissing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingMaintenanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordingFileMaintenanceActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/external-import/maintenance/delete-missing": {
+      "post": {
+        "tags": [
+          "ExternalImportApi"
+        ],
+        "summary": "\u6B20\u640D\u30EC\u30B3\u30FC\u30C9\u3092DB\u304B\u3089\u524A\u9664\u3059\u308B",
+        "operationId": "ApiExternalImportDeleteMissing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingMaintenanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordingFileMaintenanceActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/{id}": {
+      "delete": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u3092\u524A\u9664\u3059\u308B",
+        "operationId": "ApiDeleteRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deleteFiles",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfboolean"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/bulk-delete": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u3092\u4E00\u62EC\u524A\u9664\u3059\u308B",
+        "operationId": "ApiBulkDeleteRecordings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingBulkDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordingBulkDeleteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/{id}/tags": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u306B\u30BF\u30B0\u3092\u4ED8\u4E0E\u3059\u308B",
+        "operationId": "ApiAddTagsToRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/{id}/tags/{tagId}": {
+      "delete": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u304B\u3089\u30BF\u30B0\u3092\u89E3\u9664\u3059\u308B",
+        "operationId": "ApiRemoveTagFromRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/tags/bulk-add": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u3078\u30BF\u30B0\u3092\u4E00\u62EC\u4ED8\u4E0E\u3059\u308B",
+        "operationId": "ApiBulkAddTagsToRecordings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingBulkTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfTagBulkOperationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/tags/bulk-remove": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u304B\u3089\u30BF\u30B0\u3092\u4E00\u62EC\u89E3\u9664\u3059\u308B",
+        "operationId": "ApiBulkRemoveTagsFromRecordings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingBulkTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfTagBulkOperationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/listened/bulk": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u756A\u7D44\u3092\u4E00\u62EC\u3067\u8996\u8074\u6E08\u307F/\u672A\u8996\u8074\u3078\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiBulkUpdateListenedState",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingBulkListenedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordingBulkListenedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/download/{recordId}": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u30D5\u30A1\u30A4\u30EB\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3059\u308B",
+        "operationId": "ApiDownloadRecording",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/recordings/play/{recordId}": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u30D5\u30A1\u30A4\u30EB\u3092 HLS \u3067\u518D\u751F\u3059\u308B",
+        "operationId": "ApiPlayRecording",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/recordings": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiListRecordings",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "SearchQuery",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "IsDescending",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "WithinDays",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "StationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "TagIds",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "TagMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "UntaggedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "UnlistenedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListRecordingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/stations": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u9332\u97F3\u6E08\u307F\u4E00\u89A7\u306E\u653E\u9001\u5C40\u30D5\u30A3\u30EB\u30BF\u5019\u88DC\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiListRecordingStations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfRecordedStationFilterEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/duplicates/status": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u985E\u4F3C\u9332\u97F3\u62BD\u51FA\u30B8\u30E7\u30D6\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiRecordingDuplicateStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfRecordedDuplicateDetectionStatusEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/duplicates/candidates": {
+      "get": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u76F4\u8FD1\u306E\u985E\u4F3C\u9332\u97F3\u62BD\u51FA\u7D50\u679C\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiRecordingDuplicateCandidates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfRecordedDuplicateCandidateEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recordings/duplicates/run": {
+      "post": {
+        "tags": [
+          "RecordingsApi"
+        ],
+        "summary": "\u985E\u4F3C\u9332\u97F3\u62BD\u51FA\u30B8\u30E7\u30D6\u3092\u5373\u6642\u5B9F\u884C\u3059\u308B",
+        "operationId": "ApiRunRecordingDuplicateDetection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DuplicateDetectionRunRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/count": {
+      "get": {
+        "tags": [
+          "NotificationsApi"
+        ],
+        "summary": "\u672A\u8AAD\u306E\u304A\u77E5\u3089\u305B\u4EF6\u6570\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiNotificationCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfint"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/latest": {
+      "get": {
+        "tags": [
+          "NotificationsApi"
+        ],
+        "summary": "\u672A\u8AAD\u306E\u304A\u77E5\u3089\u305B\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiNotificationLatest",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfNotificationLatestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "NotificationsApi"
+        ],
+        "summary": "\u304A\u77E5\u3089\u305B\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiNotificationList",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfNotificationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/clear": {
+      "post": {
+        "tags": [
+          "NotificationsApi"
+        ],
+        "summary": "\u304A\u77E5\u3089\u305B\u3092\u5168\u524A\u9664\u3059\u308B",
+        "operationId": "ApiNotificationClear",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "TagsApi"
+        ],
+        "summary": "\u30BF\u30B0\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiGetTags",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfTagEntry"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TagsApi"
+        ],
+        "summary": "\u30BF\u30B0\u3092\u4F5C\u6210\u3059\u308B",
+        "operationId": "ApiCreateTag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfTagEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/{id}": {
+      "patch": {
+        "tags": [
+          "TagsApi"
+        ],
+        "summary": "\u30BF\u30B0\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiUpdateTag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfTagEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "TagsApi"
+        ],
+        "summary": "\u30BF\u30B0\u3092\u524A\u9664\u3059\u308B",
+        "operationId": "ApiDeleteTag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/merge": {
+      "post": {
+        "tags": [
+          "TagsApi"
+        ],
+        "summary": "\u30BF\u30B0\u3092\u7D71\u5408\u3059\u308B",
+        "operationId": "ApiMergeTag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/keywords": {
+      "get": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiReserveKeywords",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfKeywordReserveEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/keywords/update": {
+      "post": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiReserveKeywordUpdate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeywordReserveEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/keywords/delete": {
+      "post": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u3092\u524A\u9664\u3059\u308B",
+        "operationId": "ApiReserveKeywordDelete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/keywords/switch": {
+      "post": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u306E\u6709\u52B9\u72B6\u614B\u3092\u5207\u308A\u66FF\u3048\u308B",
+        "operationId": "ApiReserveKeywordSwitch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/keywords/reorder": {
+      "post": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u30AD\u30FC\u30EF\u30FC\u30C9\u4E88\u7D04\u306E\u4E26\u3073\u9806\u3092\u66F4\u65B0\u3059\u308B",
+        "operationId": "ApiReserveKeywordReorder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeywordReserveReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/programs": {
+      "get": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u756A\u7D44\u4E88\u7D04\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+        "operationId": "ApiReservePrograms",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfListOfScheduleEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reserves/programs/delete": {
+      "post": {
+        "tags": [
+          "ReservesApi"
+        ],
+        "summary": "\u756A\u7D44\u4E88\u7D04\u3092\u524A\u9664\u3059\u308B",
+        "operationId": "ApiReserveProgramDelete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOfEmptyData"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseOfboolean": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "boolean"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfDictionaryOfstringAndListOfRadikoStationInformationEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RadikoStationInformationEntry"
+              }
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfDictionaryOfstringAndListOfRadiruStationEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RadiruStationEntry"
+              }
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfEmptyData": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EmptyData"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfExternalImportSaveResult": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExternalImportSaveResult"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfIEnumerableOfProgramForApiEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProgramForApiEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfint": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfExternalImportCandidateEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExternalImportCandidateEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfKeywordReserveEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/KeywordReserveEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfRadioDateEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RadioDateEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfRadioProgramEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RadioProgramEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfRecordedDuplicateCandidateEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RecordedDuplicateCandidateEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfRecordedStationFilterEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RecordedStationFilterEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfScheduleEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListOfTagEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TagEntry"
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfListRecordingsResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ListRecordingsResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfNotificationLatestResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NotificationLatestResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfNotificationListResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NotificationListResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfProgramNowOnAirResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramNowOnAirResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfProgramPlaybackInfoResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramPlaybackInfoResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfProgramUpdateStatusResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramUpdateStatusResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRadioProgramEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RadioProgramEntry"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRecordedDuplicateDetectionStatusEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecordedDuplicateDetectionStatusEntry"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRecordingBulkDeleteResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecordingBulkDeleteResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRecordingBulkListenedResponse": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecordingBulkListenedResponse"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRecordingFileMaintenanceActionResult": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecordingFileMaintenanceActionResult"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfRecordingFileMaintenanceScanResult": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecordingFileMaintenanceScanResult"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfTagBulkOperationResult": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TagBulkOperationResult"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ApiResponseOfTagEntry": {
+        "required": [
+          "success",
+          "data",
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TagEntry"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AvailabilityTimeFree": {
+        "type": "integer"
+      },
+      "DaysOfWeek": {
+        "type": "integer"
+      },
+      "DuplicateDetectionRunRequest": {
+        "type": "object",
+        "properties": {
+          "lookbackDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxPhase1Groups": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "phase2Mode": {
+            "type": "string"
+          },
+          "broadcastClusterWindowHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "EmptyData": {
+        "type": "object"
+      },
+      "ExternalImportCandidateEntry": {
+        "type": "object",
+        "properties": {
+          "isSelected": {
+            "type": "boolean"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "broadcastAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ExternalImportCandidatesRequest": {
+        "type": "object",
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExternalImportCandidateEntry"
+            }
+          },
+          "markAsListened": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExternalImportSaveResult": {
+        "type": "object",
+        "properties": {
+          "savedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExternalImportValidationError"
+            }
+          }
+        }
+      },
+      "ExternalImportScanRequest": {
+        "type": "object",
+        "properties": {
+          "applyDefaultTag": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExternalImportValidationError": {
+        "type": "object",
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "KeywordReserveEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ulid"
+          },
+          "selectedRadikoStationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedRadiruStationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keyword": {
+            "type": "string"
+          },
+          "excludedKeyword": {
+            "type": "string"
+          },
+          "recordPath": {
+            "type": "string"
+          },
+          "recordFileName": {
+            "type": "string"
+          },
+          "searchTitleOnly": {
+            "type": "boolean"
+          },
+          "excludeTitleOnly": {
+            "type": "boolean"
+          },
+          "selectedDaysOfWeek": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DaysOfWeek"
+            }
+          },
+          "startTimeString": {
+            "type": "string"
+          },
+          "endTimeString": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "endTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "startDelay": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "endDelay": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mergeTagBehavior": {
+            "$ref": "#/components/schemas/KeywordReserveTagMergeBehavior"
+          }
+        }
+      },
+      "KeywordReserveReorderRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "KeywordReserveTagMergeBehavior": {
+        "type": "integer"
+      },
+      "ListRecordingsResponse": {
+        "required": [
+          "totalRecords",
+          "page",
+          "pageSize",
+          "recordings"
+        ],
+        "type": "object",
+        "properties": {
+          "totalRecords": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "recordings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordedProgramEntry"
+            }
+          }
+        }
+      },
+      "NoticeCategory": {
+        "type": "integer"
+      },
+      "NotificationEntry": {
+        "type": "object",
+        "properties": {
+          "logLevel": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/NoticeCategory"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isRead": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NotificationLatestResponse": {
+        "required": [
+          "count",
+          "list"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationEntry"
+            }
+          }
+        }
+      },
+      "NotificationListResponse": {
+        "required": [
+          "totalRecords",
+          "page",
+          "pageSize",
+          "recordings"
+        ],
+        "type": "object",
+        "properties": {
+          "totalRecords": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "recordings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationEntry"
+            }
+          }
+        }
+      },
+      "ProgramAreaEntry": {
+        "required": [
+          "areaId",
+          "areaName",
+          "areaOrder",
+          "serviceOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "string"
+          },
+          "areaName": {
+            "type": "string"
+          },
+          "areaOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "serviceOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ProgramForApiEntry": {
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "string"
+          },
+          "serviceKind": {
+            "$ref": "#/components/schemas/RadioServiceKind"
+          },
+          "areaId": {
+            "type": "string"
+          },
+          "areaName": {
+            "type": "string"
+          },
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "radioDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysOfWeek": {
+            "$ref": "#/components/schemas/DaysOfWeek"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "performer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "programUrl": {
+            "type": "string"
+          },
+          "availabilityTimeFree": {
+            "$ref": "#/components/schemas/AvailabilityTimeFree"
+          },
+          "onDemandContentUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "onDemandExpiresAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ProgramInformationRequestEntry": {
+        "required": [
+          "programId"
+        ],
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "string"
+          },
+          "radioServiceKind": {
+            "$ref": "#/components/schemas/RadioServiceKind"
+          },
+          "recordingType": {
+            "$ref": "#/components/schemas/RecordingType"
+          }
+        }
+      },
+      "ProgramNowOnAirResponse": {
+        "required": [
+          "programs",
+          "areas",
+          "currentAreaStations",
+          "isAreaFree"
+        ],
+        "type": "object",
+        "properties": {
+          "programs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RadioProgramEntry"
+            }
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgramAreaEntry"
+            }
+          },
+          "currentAreaStations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isAreaFree": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProgramPlaybackInfoResponse": {
+        "required": [
+          "token",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ProgramSearchEntity": {
+        "type": "object",
+        "properties": {
+          "serviceKind": {
+            "type": "string"
+          },
+          "selectedRadikoStationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedRadiruStationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keyword": {
+            "type": "string"
+          },
+          "excludedKeyword": {
+            "type": "string"
+          },
+          "searchTitleOnly": {
+            "type": "boolean"
+          },
+          "searchTitleOnlyExcludedKeyword": {
+            "type": "boolean"
+          },
+          "selectedDaysOfWeek": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DaysOfWeek"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "includeHistoricalPrograms": {
+            "type": "boolean"
+          },
+          "recordableOnly": {
+            "type": "boolean"
+          },
+          "orderKind": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramUpdateStatusResponse": {
+        "required": [
+          "isRunning",
+          "triggerSource",
+          "message",
+          "startedAtUtc",
+          "lastCompletedAtUtc",
+          "lastSucceeded"
+        ],
+        "type": "object",
+        "properties": {
+          "isRunning": {
+            "type": "boolean"
+          },
+          "triggerSource": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "startedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastCompletedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastSucceeded": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "RadikoStationInformationEntry": {
+        "type": "object",
+        "properties": {
+          "stationId": {
+            "type": "string"
+          },
+          "regionId": {
+            "type": "string"
+          },
+          "regionName": {
+            "type": "string"
+          },
+          "regionOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "area": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "areaFree": {
+            "type": "boolean"
+          },
+          "timeFree": {
+            "type": "boolean"
+          },
+          "stationOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "RadioDateEntry": {
+        "required": [
+          "value",
+          "textContent",
+          "isToday"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "textContent": {
+            "type": "string"
+          },
+          "isToday": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RadioProgramEntry": {
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "string"
+          },
+          "serviceKind": {
+            "$ref": "#/components/schemas/RadioServiceKind"
+          },
+          "areaId": {
+            "type": "string"
+          },
+          "areaName": {
+            "type": "string"
+          },
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "performer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "availabilityTimeFree": {
+            "$ref": "#/components/schemas/AvailabilityTimeFree"
+          },
+          "programUrl": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "onDemandContentUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "onDemandExpiresAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "RadioServiceKind": {
+        "type": "integer"
+      },
+      "RadiruStationEntry": {
+        "type": "object",
+        "properties": {
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "areaId": {
+            "type": "string"
+          },
+          "areaName": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordedDuplicateCandidateEntry": {
+        "type": "object",
+        "properties": {
+          "left": {
+            "$ref": "#/components/schemas/RecordedDuplicateSideEntry"
+          },
+          "right": {
+            "$ref": "#/components/schemas/RecordedDuplicateSideEntry"
+          },
+          "phase1Score": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "audioScore": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "finalScore": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "startTimeDiffHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "durationDiffSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "RecordedDuplicateDetectionStatusEntry": {
+        "type": "object",
+        "properties": {
+          "isRunning": {
+            "type": "boolean"
+          },
+          "lastStartedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastCompletedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastSucceeded": {
+            "type": "boolean"
+          },
+          "lastMessage": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordedDuplicateSideEntry": {
+        "type": "object",
+        "properties": {
+          "recordingId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "RecordedProgramEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ulid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isListened": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RecordedStationFilterEntry": {
+        "type": "object",
+        "properties": {
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordingBulkDeleteRequest": {
+        "type": "object",
+        "properties": {
+          "recordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deleteFiles": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RecordingBulkDeleteResponse": {
+        "required": [
+          "successCount",
+          "skipCount",
+          "failCount",
+          "failedRecordingIds",
+          "skippedRecordingIds"
+        ],
+        "type": "object",
+        "properties": {
+          "successCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedRecordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skippedRecordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RecordingBulkListenedRequest": {
+        "type": "object",
+        "properties": {
+          "recordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isListened": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RecordingBulkListenedResponse": {
+        "required": [
+          "successCount",
+          "skipCount",
+          "failCount",
+          "failedRecordingIds",
+          "skippedRecordingIds"
+        ],
+        "type": "object",
+        "properties": {
+          "successCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedRecordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skippedRecordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RecordingBulkTagRequest": {
+        "type": "object",
+        "properties": {
+          "recordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "RecordingFileMaintenanceActionDetail": {
+        "type": "object",
+        "properties": {
+          "recordingId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordingFileMaintenanceActionResult": {
+        "type": "object",
+        "properties": {
+          "targetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "successCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordingFileMaintenanceActionDetail"
+            }
+          }
+        }
+      },
+      "RecordingFileMaintenanceEntry": {
+        "type": "object",
+        "properties": {
+          "issueType": {
+            "type": "string"
+          },
+          "recordingId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "storedPath": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "candidateCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "candidateRelativePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RecordingFileMaintenanceScanResult": {
+        "type": "object",
+        "properties": {
+          "missingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "recoverableFailedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordingFileMaintenanceEntry"
+            }
+          }
+        }
+      },
+      "RecordingMaintenanceRequest": {
+        "type": "object",
+        "properties": {
+          "recordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RecordingTagsRequest": {
+        "type": "object",
+        "properties": {
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "RecordingType": {
+        "type": "integer"
+      },
+      "ReserveEntryRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "ReserveType": {
+        "type": "integer"
+      },
+      "ScheduleEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ulid"
+          },
+          "serviceKind": {
+            "$ref": "#/components/schemas/RadioServiceKind"
+          },
+          "stationId": {
+            "type": "string"
+          },
+          "stationName": {
+            "type": "string"
+          },
+          "areaId": {
+            "type": "string"
+          },
+          "programId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "performer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "recordingType": {
+            "$ref": "#/components/schemas/RecordingType"
+          },
+          "reserveType": {
+            "$ref": "#/components/schemas/ReserveType"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "matchedKeywordReserveKeywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "plannedTagNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TagBulkOperationResult": {
+        "type": "object",
+        "properties": {
+          "successCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedRecordingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TagEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recordingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TagMergeRequest": {
+        "type": "object",
+        "properties": {
+          "fromTagId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toTagId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TagUpsertRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Ulid": {},
+      "UpdateClockSkewMonitoringEntity": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "checkIntervalHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "thresholdSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateDuplicateDetectionIntervalEntity": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "dayOfWeek": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hour": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "minute": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateDurationEntity": {
+        "type": "object",
+        "properties": {
+          "startDuration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "endDuration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateEmbedProgramImageOnRecordEntity": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateExternalImportTimeZoneEntity": {
+        "type": "object",
+        "properties": {
+          "timeZoneId": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateExternalServiceUserAgentEntity": {
+        "type": "object",
+        "properties": {
+          "userAgent": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateMergeTagsFromMatchedRulesEntity": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateMonitoringAdvancedEntity": {
+        "type": "object",
+        "properties": {
+          "logRetentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storageLowSpaceCheckIntervalMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storageLowSpaceNotificationCooldownHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateNotificationSettingEntity": {
+        "type": "object",
+        "properties": {
+          "discordWebhookUrl": {
+            "type": "string"
+          },
+          "notificationCategories": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "UpdateRadikoLoginEntity": {
+        "required": [
+          "userId",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRadiruAreaEntity": {
+        "type": "object",
+        "properties": {
+          "radiruArea": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRadiruRequestSettingsEntity": {
+        "type": "object",
+        "properties": {
+          "minRequestIntervalMs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "requestJitterMs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateRecordDirectoryPathEntity": {
+        "type": "object",
+        "properties": {
+          "directoryPath": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRecordFileNameTemplateEntity": {
+        "type": "object",
+        "properties": {
+          "fileNameTemplate": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateReleaseCheckIntervalEntity": {
+        "type": "object",
+        "properties": {
+          "intervalDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateResumePlaybackAcrossPagesEntity": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateStorageLowSpaceThresholdEntity": {
+        "type": "object",
+        "properties": {
+          "thresholdMb": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "UpdateUnreadBadgeNoticeCategoriesEntity": {
+        "type": "object",
+        "properties": {
+          "notificationCategories": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Api"
+    },
+    {
+      "name": "GeneralApi"
+    },
+    {
+      "name": "ProgramsApi"
+    },
+    {
+      "name": "SettingsApi"
+    },
+    {
+      "name": "ExternalImportApi"
+    },
+    {
+      "name": "RecordingsApi"
+    },
+    {
+      "name": "NotificationsApi"
+    },
+    {
+      "name": "TagsApi"
+    },
+    {
+      "name": "ReservesApi"
+    }
+  ]
+}

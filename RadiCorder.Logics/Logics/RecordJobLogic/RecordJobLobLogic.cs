@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Domain.Recording;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,8 +22,6 @@ public class RecordJobLobLogic(
     IServiceScopeFactory? serviceScopeFactory = null,
     IRecordingScheduleWakeup? recordingScheduleWakeup = null)
 {
-    private static readonly TimeSpan PreparingLeadTime = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan TimeFreeReadyLeadTime = TimeSpan.FromMinutes(3);
 
     /// <summary>
     /// 録音予約のジョブをスケジュール可能状態へ初期化する。
@@ -38,7 +37,7 @@ public class RecordJobLobLogic(
             }
 
             var fireAtUtc = ResolveFireAtUtc(job);
-            var prepareStartUtc = fireAtUtc - PreparingLeadTime;
+            var prepareStartUtc = fireAtUtc - RecordingScheduleTiming.PreparingLeadTime;
 
             logger.ZLogDebug(
                 $"録音予約ジョブを初期化します。 jobId={job.Id} programId={job.ProgramId} title={job.Title} recordingType={job.RecordingType} start={job.StartDateTime:O} end={job.EndDateTime:O} fireAtUtc={fireAtUtc:O} prepareStartUtc={prepareStartUtc:O}");
@@ -142,20 +141,14 @@ public class RecordJobLobLogic(
     }
 
     /// <summary>
-    /// 録音種別に応じて実行開始時刻を UTC で算出する。
+    /// 録音開始時刻を UTC で算出する。
     /// </summary>
     private DateTimeOffset ResolveFireAtUtc(ScheduleJob job)
     {
-        var startDelaySeconds = job.StartDelay?.TotalSeconds ?? appConfig.RecordStartDuration.TotalSeconds;
+        var startDelay = job.StartDelay ?? appConfig.RecordStartDuration;
         var nowUtc = DateTimeOffset.UtcNow;
-        var timeFreeReadyAtUtc = job.EndDateTime.ToUniversalTime().Add(TimeFreeReadyLeadTime);
-        return job.RecordingType switch
-        {
-            RecordingType.TimeFree => timeFreeReadyAtUtc > nowUtc ? timeFreeReadyAtUtc : nowUtc,
-            RecordingType.OnDemand => nowUtc,
-            RecordingType.Immediate => nowUtc,
-            RecordingType.RealTime => job.StartDateTime.AddSeconds(-startDelaySeconds).AddSeconds(-1).ToUniversalTime(),
-            _ => throw new DomainException("録音タイプが不正です。")
-        };
+        return RecordingScheduleTiming.ResolveFireAtUtc(
+            job.RecordingType, job.StartDateTime, job.EndDateTime, startDelay, nowUtc)
+            ?? throw new DomainException("録音タイプが不正です。");
     }
 }

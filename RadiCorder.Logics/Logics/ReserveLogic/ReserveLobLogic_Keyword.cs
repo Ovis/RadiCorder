@@ -1,10 +1,10 @@
+using RadiCorder.Logics.Domain.Reserve;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Logics.NotificationLogic;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
-using RadiCorder.Logics.Models.Radiko;
 using RadiCorder.Logics.RdbContext;
 using ZLogger;
 
@@ -199,7 +199,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                 StartDelay = entry.StartDelay == null ? null : TimeSpan.FromSeconds(entry.StartDelay.Value),
                 EndDelay = entry.EndDelay == null ? null : TimeSpan.FromSeconds(entry.EndDelay.Value),
                 SortOrder = await reserveRepository.GetNextKeywordReserveSortOrderAsync(),
-                MergeTagBehavior = NormalizeMergeTagBehavior(entry.MergeTagBehavior)
+                MergeTagBehavior = KeywordReservationPolicy.NormalizeMergeTagBehavior(entry.MergeTagBehavior)
             };
 
             var radioStation = new List<KeywordReserveRadioStation>();
@@ -336,7 +336,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
             record.IsEnable = entry.IsEnabled;
             record.StartDelay = entry.StartDelay == null ? null : TimeSpan.FromSeconds(entry.StartDelay.Value);
             record.EndDelay = entry.EndDelay == null ? null : TimeSpan.FromSeconds(entry.EndDelay.Value);
-            record.MergeTagBehavior = NormalizeMergeTagBehavior(entry.MergeTagBehavior);
+            record.MergeTagBehavior = KeywordReservationPolicy.NormalizeMergeTagBehavior(entry.MergeTagBehavior);
 
             var radioStation = new List<KeywordReserveRadioStation>();
 
@@ -563,7 +563,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                     IsEnabled = true,
                     StartDelay = keywordReserve.StartDelay,
                     EndDelay = keywordReserve.EndDelay,
-                    RecordingType = ResolveKeywordReserveRecordingType(p),
+                    RecordingType = KeywordReservationPolicy.ResolveKeywordReserveRecordingType(p),
                     ReserveType = ReserveType.Keyword
                 };
 
@@ -703,12 +703,6 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
             }
         }
 
-        private static KeywordReserveTagMergeBehavior NormalizeMergeTagBehavior(KeywordReserveTagMergeBehavior behavior)
-        {
-            return Enum.IsDefined(typeof(KeywordReserveTagMergeBehavior), behavior)
-                ? behavior
-                : KeywordReserveTagMergeBehavior.Default;
-        }
 
         private async ValueTask RefreshPendingKeywordScheduleJobsAsync()
         {
@@ -748,7 +742,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                     continue;
                 }
 
-                var primaryReserve = ResolvePrimaryKeywordReserve(
+                var primaryReserve = KeywordReservationPolicy.ResolvePrimaryKeywordReserve(
                     relatedReserveIds
                         .Where(reserveById.ContainsKey)
                         .Select(id => reserveById[id])
@@ -802,28 +796,10 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                 return true;
             }
 
-            if (candidate.SortOrder != currentPrimary.SortOrder)
-            {
-                return candidate.SortOrder < currentPrimary.SortOrder;
-            }
-
-            return candidate.Id.CompareTo(currentPrimary.Id) < 0;
+            return KeywordReservationPolicy.IsHigherPriority(candidate, currentPrimary);
         }
 
-        private static KeywordReserve? ResolvePrimaryKeywordReserve(IEnumerable<KeywordReserve> reserves)
-        {
-            return reserves
-                .OrderBy(x => x.SortOrder)
-                .ThenBy(x => x.Id)
-                .FirstOrDefault();
-        }
 
-        private static RecordingType ResolveKeywordReserveRecordingType(RadioProgramEntry program)
-        {
-            return program.AvailabilityTimeFree is AvailabilityTimeFree.Available or AvailabilityTimeFree.PartiallyAvailable
-                ? RecordingType.TimeFree
-                : RecordingType.RealTime;
-        }
     }
 
 }

@@ -152,6 +152,7 @@ public static class LogicServiceCollectionExtensions
         services.AddScoped<ClockSkewMonitorLobLogic>();
         services.AddScoped<ReleaseCheckLobLogic>();
         services.AddScoped<RecordJobLobLogic>();
+        services.AddScoped<RecordingJobExecutor>();
         services.AddScoped<RadikoUniqueProcessLogic>();
 
         return services;

@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Services.Streaming;
 using System;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
@@ -173,6 +174,7 @@ public static class LogicServiceCollectionExtensions
     private static IServiceCollection AddPlaybackServices(this IServiceCollection services)
     {
         services.AddScoped<PlayProgramLobLogic>();
+        services.AddScoped<RadikoPlaylistClient>();
         return services;
     }
 

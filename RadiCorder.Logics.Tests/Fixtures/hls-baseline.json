@@ -1,0 +1,122 @@
+[
+  {
+    "Name": "empty",
+    "Input": "",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": null,
+    "Trimmed": "",
+    "Rewritten": ""
+  },
+  {
+    "Name": "empty",
+    "Input": "",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:00:22+00:00",
+    "Trimmed": "",
+    "Rewritten": ""
+  },
+  {
+    "Name": "empty",
+    "Input": "",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:01:30+00:00",
+    "Trimmed": "",
+    "Rewritten": ""
+  },
+  {
+    "Name": "master",
+    "Input": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": null,
+    "Trimmed": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=96000\n/api/programs/radiko-proxy/master.m3u8?target=https%3A%2F%2Fradiko.jp%2Flive%2Fmaster.m3u8\u0026proxyKey=fixture-key\u0026resolveLivePlaylist=true\n"
+  },
+  {
+    "Name": "master",
+    "Input": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:00:22+00:00",
+    "Trimmed": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=96000\n/api/programs/radiko-proxy/master.m3u8?target=https%3A%2F%2Fradiko.jp%2Flive%2Fmaster.m3u8\u0026proxyKey=fixture-key\u0026resolveLivePlaylist=true\n"
+  },
+  {
+    "Name": "master",
+    "Input": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:01:30+00:00",
+    "Trimmed": "#EXTM3U\r\n#EXT-X-STREAM-INF:BANDWIDTH=96000\r\nmedia.m3u8\r\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=96000\n/api/programs/radiko-proxy/master.m3u8?target=https%3A%2F%2Fradiko.jp%2Flive%2Fmaster.m3u8\u0026proxyKey=fixture-key\u0026resolveLivePlaylist=true\n"
+  },
+  {
+    "Name": "no-segment",
+    "Input": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": null,
+    "Trimmed": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-VERSION:3\n"
+  },
+  {
+    "Name": "no-segment",
+    "Input": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:00:22+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-VERSION:3\n"
+  },
+  {
+    "Name": "no-segment",
+    "Input": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:01:30+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-VERSION:3\n",
+    "Rewritten": "#EXTM3U\n#EXT-X-VERSION:3\n"
+  },
+  {
+    "Name": "tail",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-START:TIME-OFFSET=-20\n#EXTINF:5,\n0.aac\n#EXTINF:5,\n1.aac\n#EXTINF:5,\n2.aac\n#EXTINF:5,\n3.aac\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": null,
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:103\n#EXTINF:5,\n#EXTINF:5,\n3.aac\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:103\n#EXTINF:5,\n#EXTINF:5,\n/api/programs/radiko-proxy/3.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F3.aac\u0026proxyKey=fixture-key\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  },
+  {
+    "Name": "tail",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-START:TIME-OFFSET=-20\n#EXTINF:5,\n0.aac\n#EXTINF:5,\n1.aac\n#EXTINF:5,\n2.aac\n#EXTINF:5,\n3.aac\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:00:22+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXTINF:5,\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXTINF:5,\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  },
+  {
+    "Name": "tail",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-START:TIME-OFFSET=-20\n#EXTINF:5,\n0.aac\n#EXTINF:5,\n1.aac\n#EXTINF:5,\n2.aac\n#EXTINF:5,\n3.aac\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:01:30+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXTINF:5,\n#EXTINF:5,\n4.aac\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXTINF:5,\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  },
+  {
+    "Name": "dated",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n0.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:05Z\n#EXTINF:5,\n1.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:10Z\n#EXTINF:5,\n2.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:15Z\n#EXTINF:5,\n3.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": null,
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:103\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:15Z\n#EXTINF:5,\n3.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:103\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022/api/programs/radiko-proxy/key.bin?target=https%3A%2F%2Fradiko.jp%2Flive%2Fkey.bin\u0026proxyKey=fixture-key\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:15Z\n#EXTINF:5,\n/api/programs/radiko-proxy/3.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F3.aac\u0026proxyKey=fixture-key\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  },
+  {
+    "Name": "dated",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n0.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:05Z\n#EXTINF:5,\n1.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:10Z\n#EXTINF:5,\n2.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:15Z\n#EXTINF:5,\n3.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:00:22+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022/api/programs/radiko-proxy/key.bin?target=https%3A%2F%2Fradiko.jp%2Flive%2Fkey.bin\u0026proxyKey=fixture-key\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  },
+  {
+    "Name": "dated",
+    "Input": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n0.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:05Z\n#EXTINF:5,\n1.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:10Z\n#EXTINF:5,\n2.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:15Z\n#EXTINF:5,\n3.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST\n",
+    "Now": "2026-04-01T00:00:30+00:00",
+    "RecordingStart": "2026-04-01T00:01:30+00:00",
+    "Trimmed": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022key.bin\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n4.aac\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n5.aac\n#EXT-X-ENDLIST",
+    "Rewritten": "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:104\n#EXT-X-KEY:METHOD=AES-128,URI=\u0022/api/programs/radiko-proxy/key.bin?target=https%3A%2F%2Fradiko.jp%2Flive%2Fkey.bin\u0026proxyKey=fixture-key\u0022\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:00Z\n#EXTINF:5,\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:20Z\n#EXTINF:5,\n/api/programs/radiko-proxy/4.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F4.aac\u0026proxyKey=fixture-key\n#EXT-X-PROGRAM-DATE-TIME:2026-04-01T00:00:25Z\n#EXTINF:5,\n/api/programs/radiko-proxy/5.aac?target=https%3A%2F%2Fradiko.jp%2Flive%2F5.aac\u0026proxyKey=fixture-key\n#EXT-X-ENDLIST"
+  }
+]

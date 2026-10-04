@@ -69,11 +69,11 @@ public class RadiruApiClient(
                 },
                 config.ExternalServiceUserAgent,
                 cancellationToken,
-                beforeAttempt: WaitForRadiruRequestSlotAsync);
+                beforeAttempt: WaitForRadiruRequestSlotAsync, responseHeadersOnly: true);
 
             response.EnsureSuccessStatusCode();
 
-            var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jsonString = await HttpResponseBodyReader.ReadStringAsync(response.Content, HttpResponseBodyReader.ProgramLimit, cancellationToken);
             using var document = JsonDocument.Parse(jsonString, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
             if (document.RootElement.ValueKind != JsonValueKind.Object ||
                 !document.RootElement.EnumerateObject().Any(x => x.Value.ValueKind == JsonValueKind.Object &&

@@ -59,7 +59,7 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
         }
 
         targetUri = upstreamResponse.RequestMessage?.RequestUri ?? targetUri;
-        var upstreamContent = await upstreamResponse.Content.ReadAsStringAsync(cancellationToken);
+        var upstreamContent = await HttpResponseBodyReader.ReadStringAsync(upstreamResponse.Content, HttpResponseBodyReader.PlaylistLimit, cancellationToken);
         if (!upstreamContent.Contains("#EXT-X-STREAM-INF", StringComparison.Ordinal))
         {
             logger.ZLogDebug($"radiko live proxy target is already media playlist. target={targetUri}");
@@ -90,7 +90,7 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
             }
 
             mediaPlaylistUri = mediaPlaylistResponse.RequestMessage?.RequestUri ?? mediaPlaylistUri;
-            mediaPlaylist = await mediaPlaylistResponse.Content.ReadAsStringAsync(cancellationToken);
+            mediaPlaylist = await HttpResponseBodyReader.ReadStringAsync(mediaPlaylistResponse.Content, HttpResponseBodyReader.PlaylistLimit, cancellationToken);
             if (recordingStartUtc is null)
             {
                 break;

@@ -77,8 +77,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
                     response.EnsureSuccessStatusCode();
                 }
 
-                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                var doc = await XDocument.LoadAsync(responseStream, LoadOptions.None, cancellationToken);
+                var doc = await HttpResponseBodyReader.ReadXmlAsync(response.Content, HttpResponseBodyReader.DefinitionLimit, cancellationToken);
 
                 var programNowOnAirUrlTemplate = GetDescendantValue(doc, "url_program_noa");
                 var programDetailApiUrlTemplate = GetDescendantValue(doc, "url_program_detail");

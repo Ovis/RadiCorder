@@ -204,13 +204,13 @@ public class MediaTranscodeService(
         request.Headers.TryAddWithoutValidation("User-Agent", config.ExternalServiceUserAgent);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
 
-        using var response = await CreateHttpClient().SendAsync(request, cancellationToken);
+        using var response = await CreateHttpClient().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw new InvalidOperationException($"画像取得に失敗しました。status={(int)response.StatusCode}");
         }
 
-        var imageBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var imageBytes = await HttpResponseBodyReader.ReadBytesAsync(response.Content, HttpResponseBodyReader.ImageLimit, cancellationToken);
         if (imageBytes.Length == 0)
         {
             throw new InvalidOperationException("画像データが空です。");

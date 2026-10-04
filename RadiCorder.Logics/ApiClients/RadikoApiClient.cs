@@ -48,10 +48,9 @@ public class RadikoApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken, responseHeadersOnly: true);
             response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var doc = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+            var doc = await HttpResponseBodyReader.ReadXmlAsync(response.Content, HttpResponseBodyReader.DefinitionLimit, cancellationToken);
 
             var regionOrder = 1;
 
@@ -119,10 +118,9 @@ public class RadikoApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken, responseHeadersOnly: true);
             response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var doc = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+            var doc = await HttpResponseBodyReader.ReadXmlAsync(response.Content, HttpResponseBodyReader.DefinitionLimit, cancellationToken);
 
             var list = new List<string>();
 
@@ -167,9 +165,9 @@ public class RadikoApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken, responseHeadersOnly: true);
             response.EnsureSuccessStatusCode();
-            var xmlString = await response.Content.ReadAsStringAsync(cancellationToken);
+            var xmlString = await HttpResponseBodyReader.ReadStringAsync(response.Content, HttpResponseBodyReader.ProgramLimit, cancellationToken);
             var doc = XDocument.Parse(xmlString);
 
             var stations = doc.Descendants("station").ToList();
@@ -287,9 +285,9 @@ public class RadikoApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken, responseHeadersOnly: true);
             response.EnsureSuccessStatusCode();
-            var xmlString = await response.Content.ReadAsStringAsync(cancellationToken);
+            var xmlString = await HttpResponseBodyReader.ReadStringAsync(response.Content, HttpResponseBodyReader.ProgramLimit, cancellationToken);
 
             var doc = XDocument.Parse(xmlString);
             var nodes = doc.XPathSelectElements($"/urls/url[@timefree='{timefree}' and @areafree='{areafree}']/playlist_create_url");

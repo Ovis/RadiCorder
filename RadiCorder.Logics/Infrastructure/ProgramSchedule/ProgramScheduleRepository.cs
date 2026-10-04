@@ -1,18 +1,26 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using RadiCorder.Logics.BackgroundServices;
 using RadiCorder.Logics.Domain.ProgramSchedule;
+using RadiCorder.Logics.Domain.Recording;
 using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Models.Radiko;
 using RadiCorder.Logics.Primitives;
 using RadiCorder.Logics.RdbContext;
+using RadiCorder.Logics.Errors;
+using ZLogger;
 
 namespace RadiCorder.Logics.Infrastructure.ProgramSchedule;
 
 /// <summary>
 /// 番組表データの永続化を担うリポジトリ実装
 /// </summary>
-public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramScheduleRepository
+public class ProgramScheduleRepository(
+    RadioDbContext dbContext,
+    IRecordingScheduleWakeup? recordingScheduleWakeup = null,
+    ILogger<ProgramScheduleRepository>? logger = null) : IProgramScheduleRepository
 {
     private static readonly TimeZoneInfo JapanStandardTimeZone = JapanTimeZone.Resolve();
 
@@ -93,12 +101,14 @@ public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramSched
     }
 
     /// <summary>
-    /// radiko番組を追加する
+    /// radiko番組を追加・更新する。同じ局・開始日時の番組IDは予約のため維持する。
     /// </summary>
     public async ValueTask AddRadikoProgramsIfMissingAsync(IEnumerable<RadikoProgram> programs, CancellationToken cancellationToken = default)
     {
         var programList = programs
             .GroupBy(x => x.ProgramId)
+            .Select(g => g.Last())
+            .GroupBy(x => (x.StationId, x.StartTime))
             .Select(g => g.Last())
             .ToList();
         if (programList.Count == 0)
@@ -107,6 +117,7 @@ public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramSched
         }
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var updatedJobs = 0;
 
         try
         {
@@ -114,34 +125,47 @@ public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramSched
                 .Select(x => x.ProgramId)
                 .Distinct()
                 .ToList();
-            var trackedProgramsById = dbContext.RadikoPrograms.Local
-                .ToDictionary(x => x.ProgramId, StringComparer.Ordinal);
-
-            var existingProgramIds = await dbContext.RadikoPrograms
-                .AsNoTracking()
-                .Where(r => programIds.Contains(r.ProgramId))
-                .Select(r => r.ProgramId)
-                .ToHashSetAsync(cancellationToken);
+            var stationIds = programList.Select(p => p.StationId).Distinct().ToList();
+            var radioDates = programList.Select(p => p.RadioDate).Distinct().ToList();
+            var existingPrograms = await dbContext.RadikoPrograms
+                .Where(p => programIds.Contains(p.ProgramId) ||
+                    (stationIds.Contains(p.StationId) && radioDates.Contains(p.RadioDate)))
+                .ToListAsync(cancellationToken);
+            var existingById = existingPrograms.ToDictionary(p => p.ProgramId, StringComparer.Ordinal);
+            var existingBySlot = existingPrograms
+                .GroupBy(p => (p.StationId, p.StartTime))
+                .ToDictionary(g => g.Key, g => g.OrderBy(p => p.ProgramId, StringComparer.Ordinal).First());
 
             foreach (var program in programList)
             {
-                if (existingProgramIds.Contains(program.ProgramId))
+                if (!existingById.TryGetValue(program.ProgramId, out var existing))
+                    existingBySlot.TryGetValue((program.StationId, program.StartTime), out existing);
+
+                if (existing != null)
                 {
-                    if (trackedProgramsById.TryGetValue(program.ProgramId, out var trackedProgram))
-                    {
-                        dbContext.Entry(trackedProgram).CurrentValues.SetValues(program);
-                    }
-                    else
-                    {
-                        dbContext.RadikoPrograms.Attach(program);
-                        dbContext.Entry(program).State = EntityState.Modified;
-                        trackedProgramsById[program.ProgramId] = program;
-                    }
+                    if (existing.StationId != program.StationId)
+                        throw new DomainException("radiko番組IDが異なる局と重複しています。");
+
+                    var scheduleChanged = existing.StartTime != program.StartTime || existing.EndTime != program.EndTime ||
+                        existing.Title != program.Title || existing.Performer != program.Performer || existing.Description != program.Description;
+                    var oldSlot = (existing.StationId, existing.StartTime);
+                    // 終了日時の訂正で生成IDが変わっても、既存の予約・録音履歴の参照先を変えない。
+                    var entry = dbContext.Entry(existing);
+                    var values = entry.CurrentValues.Clone();
+                    values.SetValues(program);
+                    values[nameof(RadikoProgram.ProgramId)] = existing.ProgramId;
+                    entry.CurrentValues.SetValues(values);
+                    if (existingBySlot.TryGetValue(oldSlot, out var oldSlotProgram) && ReferenceEquals(oldSlotProgram, existing))
+                        existingBySlot.Remove(oldSlot);
+                    existingBySlot[(existing.StationId, existing.StartTime)] = existing;
+                    if (scheduleChanged)
+                        updatedJobs += await UpdatePendingRadikoJobsAsync(existing, cancellationToken);
                 }
                 else
                 {
                     await dbContext.RadikoPrograms.AddAsync(program, cancellationToken);
-                    trackedProgramsById[program.ProgramId] = program;
+                    existingById[program.ProgramId] = program;
+                    existingBySlot[(program.StationId, program.StartTime)] = program;
                 }
             }
 
@@ -155,6 +179,52 @@ public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramSched
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+
+        if (updatedJobs > 0)
+        {
+            try { recordingScheduleWakeup?.Wake(); }
+            catch (Exception ex) { logger?.ZLogWarning(ex, $"番組表更新後の録音スケジューラ起床通知に失敗しました。"); }
+        }
+    }
+
+    /// <summary>
+    /// 待機中の番組予約のみ最新情報へ追随させる。実行中・完了済みのジョブは変更しない。
+    /// </summary>
+    private async Task<int> UpdatePendingRadikoJobsAsync(RadikoProgram program, CancellationToken cancellationToken)
+    {
+        var nowUtc = DateTimeOffset.UtcNow;
+        var timeFreePrepareStart = RecordingScheduleTiming.ResolveFireAtUtc(
+            RecordingType.TimeFree, program.StartTime, program.EndTime, TimeSpan.Zero, nowUtc)!.Value
+            - RecordingScheduleTiming.PreparingLeadTime;
+        var jobs = await dbContext.ScheduleJob.AsNoTracking()
+            .Where(job => job.ServiceKind == RadioServiceKind.Radiko && job.StationId == program.StationId &&
+                job.ProgramId == program.ProgramId && job.State == ScheduleJobState.Pending &&
+                (job.ReserveType == ReserveType.Program || job.ReserveType == ReserveType.Keyword))
+            .Select(job => new { job.Id, job.RecordingType, job.StartDateTime, job.PrepareStartUtc })
+            .ToListAsync(cancellationToken);
+        var updated = 0;
+        foreach (var job in jobs)
+        {
+            var prepareStart = job.RecordingType switch
+            {
+                RecordingType.TimeFree => timeFreePrepareStart,
+                RecordingType.RealTime => job.PrepareStartUtc + (program.StartTime - job.StartDateTime),
+                _ => job.PrepareStartUtc
+            };
+            // 読み取り後に実行開始されても、状態を巻き戻したり実行中の時刻を変更したりしない。
+            updated += await dbContext.ScheduleJob
+                .Where(current => current.Id == job.Id && current.State == ScheduleJobState.Pending &&
+                    current.ServiceKind == RadioServiceKind.Radiko && current.StationId == program.StationId &&
+                    current.ProgramId == program.ProgramId && current.RecordingType == job.RecordingType)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(current => current.StartDateTime, program.StartTime)
+                    .SetProperty(current => current.EndDateTime, program.EndTime)
+                    .SetProperty(current => current.Title, program.Title)
+                    .SetProperty(current => current.Performer, program.Performer)
+                    .SetProperty(current => current.Description, program.Description)
+                    .SetProperty(current => current.PrepareStartUtc, prepareStart), cancellationToken);
+        }
+        return updated;
     }
 
     /// <summary>

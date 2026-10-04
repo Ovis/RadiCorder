@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Infrastructure.Recording;
 using RadiCorder.Logics.RdbContext;
@@ -28,6 +30,7 @@ public class RecordedProgramMediaService(
         var journal = new RecordingDeletionJournal(config);
         var stagedFiles = new List<RecordingDeletionJournal.StagedFile>();
         var databaseDeleted = false;
+        List<(EntityEntry Entry, EntityState State)> changedStates = [];
         try
         {
             var recording = await dbContext.Recordings.FindAsync(recorderId);
@@ -38,22 +41,21 @@ public class RecordedProgramMediaService(
 
             if (deletePhysicalFiles)
             {
-                var (found, relativePath) = await GetRecordedProgramFilePathAsync(recorderId);
-                if (found && !string.IsNullOrEmpty(relativePath))
+                // 削除の読取失敗を「ファイルなし」に変換せず、HLS状態の補正保存も行わない。
+                var recordingFile = await dbContext.RecordingFiles.FindAsync(recorderId);
+                if (!string.IsNullOrEmpty(recordingFile?.FileRelativePath))
                 {
-                    if (!TryResolveFileFullPath(relativePath, out var fullPath)) return false;
+                    if (!TryResolveFileFullPath(recordingFile.FileRelativePath, out var fullPath)) return false;
                     if (File.Exists(fullPath)) Stage(fullPath, false);
                 }
-                var (hasHls, playlistPath) = await GetHlsAsync(recorderId, false);
-                if (hasHls && File.Exists(playlistPath))
-                {
-                    var directory = Path.GetDirectoryName(playlistPath)!;
-                    Stage(directory, true);
-                }
+                var hlsDirectory = HlsDirectoryPath(recorderId);
+                if (Directory.Exists(hlsDirectory)) Stage(hlsDirectory, true);
             }
 
             // Recordingを削除すれば関連データもカスケード削除される
+            var originalStates = dbContext.ChangeTracker.Entries().Select(entry => (Entry: entry, State: entry.State)).ToList();
             dbContext.Recordings.Remove(recording);
+            changedStates = originalStates.Where(x => x.Entry.State != x.State).ToList();
             await dbContext.SaveChangesAsync();
             databaseDeleted = true;
             foreach (var file in stagedFiles)
@@ -72,6 +74,8 @@ public class RecordedProgramMediaService(
         {
             if (!databaseDeleted)
             {
+                // DBのrollbackだけでは追跡状態は戻らない。次のSaveChangesへ削除を持ち越さない。
+                foreach (var (entry, state) in changedStates) entry.State = state;
                 var restored = true;
                 foreach (var file in stagedFiles.AsEnumerable().Reverse())
                 {

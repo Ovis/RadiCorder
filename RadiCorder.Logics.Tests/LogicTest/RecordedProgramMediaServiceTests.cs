@@ -50,8 +50,19 @@ public class RecordedProgramMediaServiceTests : UnitTestBase
             await _dbContext.Database.ExecuteSqlRawAsync("CREATE TRIGGER reject_recording_delete BEFORE DELETE ON Recordings BEGIN SELECT RAISE(ABORT, 'delete failed'); END;");
             Assert.That(await _service.DeleteRecordedProgramAsync(id), Is.False);
             Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("録音データ"));
-            _dbContext.ChangeTracker.Clear();
-            Assert.That(await _dbContext.Recordings.FindAsync(id), Is.Not.Null);
+            Assert.That(_dbContext.Entry((await _dbContext.Recordings.FindAsync(id))!).State, Is.EqualTo(EntityState.Unchanged));
+
+            // 同じスコープで次の削除を保存しても、失敗した録音と関連行を削除しない。
+            await _dbContext.Database.ExecuteSqlRawAsync("DROP TRIGGER reject_recording_delete;");
+            var (nextId, _, _) = await AddRecordingFileAsync(fileRelativePath: "next.m4a");
+            await File.WriteAllTextAsync(Path.Combine(root, "next.m4a"), "次の録音");
+            Assert.That(await _service.DeleteRecordedProgramAsync(nextId), Is.True);
+            Assert.That(await _dbContext.Recordings.AsNoTracking().AnyAsync(x => x.Id == id), Is.True);
+            Assert.That(await _dbContext.RecordingFiles.AsNoTracking().AnyAsync(x => x.RecordingId == id), Is.True);
+            Assert.That(await _dbContext.RecordingMetadatas.AsNoTracking().AnyAsync(x => x.RecordingId == id), Is.True);
+            Assert.That(await _dbContext.Recordings.AsNoTracking().AnyAsync(x => x.Id == nextId), Is.False);
+            Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("録音データ"));
+            Assert.That(Directory.GetFiles(Path.Combine(root, "recording-deletion")), Is.Empty);
         }
         finally
         {

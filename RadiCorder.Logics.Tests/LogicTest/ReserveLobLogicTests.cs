@@ -189,7 +189,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         [Test]
         public async Task SetRecordingJobByProgramIdAsync_radiru番組録音予約テスト()
         {
-            var dayOfWeek = (DaysOfWeek)_appContextMock.Object.StandardDateTimeOffset.DayOfWeek;
+            var dayOfWeek = _appContextMock.Object.StandardDateTimeOffset.DayOfWeek.ToDaysOfWeek();
             var date = DateOnly.FromDateTime(_appContextMock.Object.StandardDateTimeOffset.UtcDateTime.Date);
             var areaTokyo = RadiCorder.Logics.Models.NhkRadiru.RadiruAreaKind.東京.GetEnumCodeId();
 
@@ -235,7 +235,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         public async Task SetRecordingJobByProgramIdAsync_放送終了後はタイムフリーとしてDB登録される()
         {
             var now = _appContextMock.Object.StandardDateTimeOffset;
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
             var beforeCount = _dbContext.ScheduleJob.Count();
 
             var programEntry = new RadikoProgram
@@ -893,16 +893,18 @@ namespace RadiCorder.Logics.Tests.LogicTest
             Assert.That(result.Error?.Message, Is.EqualTo("対象曜日を1つ以上選択してください。"));
         }
 
-        [Test]
-        public async ValueTask SetKeywordReserveAsync_マージンがScheduleJobとスケジューラへ反映される()
+        [TestCase("2026-10-04T12:00:00+09:00")]
+        [TestCase("2026-10-06T12:00:00+09:00")]
+        public async ValueTask SetKeywordReserveAsync_マージンがScheduleJobとスケジューラへ反映される(string nowValue)
         {
             // Arrange
-            var now = _appContextMock.Object.StandardDateTimeOffset;
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var now = DateTimeOffset.Parse(nowValue);
+            _appContextMock.SetupGet(x => x.StandardDateTimeOffset).Returns(now);
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
 
             var programEntry = new RadikoProgram
             {
-                ProgramId = "TBS_MARGIN_FLOW_001",
+                ProgramId = $"TBS_MARGIN_FLOW_{now:yyyyMMdd}",
                 Title = "Margin Flow Program",
                 StartTime = now.AddHours(2),
                 EndTime = now.AddHours(3),
@@ -968,7 +970,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
             // Arrange
             var now = new DateTimeOffset(2026, 2, 10, 12, 0, 0, TimeSpan.FromHours(9));
             _appContextMock.SetupGet(x => x.StandardDateTimeOffset).Returns(now);
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
 
             var onAirTimeFreeProgram = new RadikoProgram
             {
@@ -1030,7 +1032,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         {
             var now = new DateTimeOffset(2026, 2, 10, 12, 0, 0, TimeSpan.FromHours(9));
             _appContextMock.SetupGet(x => x.StandardDateTimeOffset).Returns(now);
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
 
             var onAirProgram = new RadikoProgram
             {
@@ -1080,7 +1082,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         {
             var now = new DateTimeOffset(2026, 2, 10, 12, 0, 0, TimeSpan.FromHours(9));
             _appContextMock.SetupGet(x => x.StandardDateTimeOffset).Returns(now);
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
             var areaTokyo = RadiCorder.Logics.Models.NhkRadiru.RadiruAreaKind.東京.GetEnumCodeId();
             var areaSendai = RadiCorder.Logics.Models.NhkRadiru.RadiruAreaKind.仙台.GetEnumCodeId();
             var stationId = "r1";
@@ -1349,7 +1351,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         public async Task SetAllKeywordReserveScheduleAsync_既存予約より高優先ルールがあれば主ルールを昇格する()
         {
             var now = _appContextMock.Object.StandardDateTimeOffset;
-            var dayOfWeek = (DaysOfWeek)now.DayOfWeek;
+            var dayOfWeek = now.DayOfWeek.ToDaysOfWeek();
             var lowReserveId = Ulid.NewUlid();
             var highReserveId = Ulid.NewUlid();
             var scheduleJobId = Ulid.NewUlid();
@@ -1567,7 +1569,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
                 EndTime = now.AddHours(2),
                 StationId = "TBS",
                 RadioDate = DateOnly.FromDateTime(now.UtcDateTime.Date),
-                DaysOfWeek = (DaysOfWeek)now.DayOfWeek,
+                DaysOfWeek = now.DayOfWeek.ToDaysOfWeek(),
                 AvailabilityTimeFree = AvailabilityTimeFree.Available
             };
 
@@ -1611,5 +1613,4 @@ namespace RadiCorder.Logics.Tests.LogicTest
         }
     }
 }
-
 

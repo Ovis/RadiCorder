@@ -9,6 +9,7 @@ using RadiCorder.Logics.Logics.ProgramScheduleLogic;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.RdbContext;
 using RadiCorder.Logics.Services;
+using RadiCorder.Logics.Infrastructure.Recording;
 using ZLogger;
 
 namespace RadiCorder.Logics.BackgroundServices;
@@ -96,6 +97,14 @@ public class RecordingScheduleBackgroundService(
         using var scope = serviceScopeFactory.CreateScope();
         var programScheduleLobLogic = scope.ServiceProvider.GetRequiredService<ProgramScheduleLobLogic>();
         var dbContext = scope.ServiceProvider.GetRequiredService<RadioDbContext>();
+
+        await new RecordingDeletionJournal(appConfigurationService).RecoverAsync(dbContext, logger, cancellationToken);
+
+        var finalizationRecovery = scope.ServiceProvider.GetService<RecordingFinalizationRecovery>();
+        if (finalizationRecovery != null)
+        {
+            await finalizationRecovery.RecoverAsync(cancellationToken);
+        }
 
         // DB上の有効ジョブをスケジューラ実行可能な初期状態へ揃える。
         await programScheduleLobLogic.SetScheduleJobFromDbAsync();

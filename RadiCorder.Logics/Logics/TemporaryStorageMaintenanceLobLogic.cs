@@ -38,8 +38,21 @@ public class TemporaryStorageMaintenanceLobLogic(
         var timeFreeWorkDir = TemporaryStoragePaths.GetTimeFreeWorkDirectory(temporaryRoot);
         var hlsCacheRootDir = TemporaryStoragePaths.GetHlsCacheRootDirectory(temporaryRoot);
 
-        var removedRecordingsWorkFiles = CleanupOldFiles(recordingsWorkDir, workCutoffUtc, cancellationToken);
-        var removedTimeFreeWorkFiles = CleanupOldFiles(timeFreeWorkDir, workCutoffUtc, cancellationToken);
+        var protectedFiles = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var hasUnknownFinalization = false;
+        var journal = new RecordingFinalizationJournal(config);
+        foreach (var file in journal.GetPendingFiles())
+        {
+            try { protectedFiles.Add(Path.GetFullPath(journal.Read(file).Path.TempFilePath)); }
+            catch (Exception ex)
+            {
+                hasUnknownFinalization = true;
+                logger.ZLogWarning(ex, $"録音確定待ちの情報を読めないため、作業ファイルの掃除を見送ります。journal={file}");
+            }
+        }
+
+        var removedRecordingsWorkFiles = hasUnknownFinalization ? 0 : CleanupOldFiles(recordingsWorkDir, workCutoffUtc, cancellationToken, protectedFiles);
+        var removedTimeFreeWorkFiles = hasUnknownFinalization ? 0 : CleanupOldFiles(timeFreeWorkDir, workCutoffUtc, cancellationToken, protectedFiles);
         var (removedHlsDirs, resetHlsFlags) = await CleanupOldHlsCacheAsync(hlsCacheRootDir, hlsCutoffUtc, cancellationToken);
 
         logger.ZLogInformation(
@@ -49,7 +62,7 @@ public class TemporaryStorageMaintenanceLobLogic(
     /// <summary>
     /// 指定ディレクトリ配下の古いファイルを削除する。
     /// </summary>
-    private int CleanupOldFiles(string rootDir, DateTime cutoffUtc, CancellationToken cancellationToken)
+    private int CleanupOldFiles(string rootDir, DateTime cutoffUtc, CancellationToken cancellationToken, HashSet<string> protectedFiles)
     {
         if (!Directory.Exists(rootDir))
         {
@@ -60,6 +73,7 @@ public class TemporaryStorageMaintenanceLobLogic(
         foreach (var filePath in Directory.EnumerateFiles(rootDir, "*", SearchOption.AllDirectories))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (protectedFiles.Contains(Path.GetFullPath(filePath))) continue;
 
             try
             {

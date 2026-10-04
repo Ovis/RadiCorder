@@ -93,8 +93,7 @@ public class RecordingRepository(
             var recording = await dbContext.Recordings.FindAsync([recordingId], cancellationToken);
             if (recording == null)
             {
-                logger.ZLogWarning($"録音レコードが存在しないため状態更新をスキップしました。");
-                return;
+                throw new InvalidOperationException("録音レコードが存在しないため状態を更新できません。");
             }
 
             recording.State = state;
@@ -128,8 +127,7 @@ public class RecordingRepository(
             var recordingFile = await dbContext.RecordingFiles.FindAsync([recordingId], cancellationToken);
             if (recordingFile == null)
             {
-                logger.ZLogWarning($"録音ファイル情報が存在しないためパス更新をスキップしました。");
-                return;
+                throw new InvalidOperationException("録音ファイル情報が存在しないためパスを更新できません。");
             }
 
             recordingFile.FileRelativePath = path.RelativePath;

@@ -20,7 +20,8 @@ public class RecordingJobExecutor(
     RadioDbContext dbContext,
     RecordingLobLogic recordingLobLogic,
     NotificationLobLogic notificationLobLogic,
-    IAppConfigurationService appConfigurationService)
+    IAppConfigurationService appConfigurationService,
+    IMediaStorageService? mediaStorageService = null)
 {
     /// <summary>
     /// キュー投入済みジョブを実行する。
@@ -130,6 +131,11 @@ public class RecordingJobExecutor(
             {
                 dbContext.ScheduleJob.Remove(job);
                 await dbContext.SaveChangesAsync(cancellationToken);
+                if (mediaStorageService is IRecoverableMediaStorageService recoverableStorage)
+                {
+                    // DBの後処理まで成功した場合だけ、復旧記録を解放する。
+                    recoverableStorage.CompleteJobFinalization(jobId);
+                }
             }
             catch (Exception ex)
             {

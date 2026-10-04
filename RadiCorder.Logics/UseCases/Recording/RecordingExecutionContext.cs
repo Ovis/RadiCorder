@@ -32,7 +32,7 @@ internal sealed class RecordingExecutionContext(
 
         try
         {
-            await repository.UpdateStateAsync(RecordingId.Value, state, message, cancellationToken);
+            await UpdateStateRequiredAsync(state, message);
         }
         catch (Exception ex)
         {
@@ -40,6 +40,12 @@ internal sealed class RecordingExecutionContext(
             return;
         }
 
+    }
+
+    public async ValueTask UpdateStateRequiredAsync(RecordingState state, string? message)
+    {
+        if (RecordingId == null) return;
+        await repository.UpdateStateAsync(RecordingId.Value, state, message, cancellationToken);
         try
         {
             await recordingStateEventPublisher.PublishAsync(

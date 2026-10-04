@@ -70,12 +70,12 @@ public class RecordingRepositoryTests : UnitTestBase
     }
 
     /// <summary>
-    /// 対象がない場合は例外にならない
+    /// 対象がない場合は完了したと誤認しない
     /// </summary>
     [Test]
-    public async Task UpdateStateAsync_対象なし_例外なし()
+    public void UpdateStateAsync_対象なし_例外で通知する()
     {
-        Assert.DoesNotThrowAsync(async () =>
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _repository.UpdateStateAsync(Ulid.NewUlid(), RecordingState.Completed));
     }
 

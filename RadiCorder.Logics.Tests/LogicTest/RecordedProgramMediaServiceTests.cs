@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RadiCorder.Logics.Domain.Recording;
@@ -33,6 +34,60 @@ public class RecordedProgramMediaServiceTests : UnitTestBase
             _configMock.Object,
             _ffmpegMock.Object,
             _dbContext);
+    }
+
+    [Test]
+    public async Task DeleteRecordedProgramAsync_DB削除失敗時は音声ファイルを復元する()
+    {
+        var root = CreateTempDirectory("delete-rollback");
+        try
+        {
+            _configMock.SetupGet(x => x.RecordFileSaveDir).Returns(root);
+            _configMock.SetupGet(x => x.TemporaryFileSaveDir).Returns(root);
+            var path = Path.Combine(root, "audio.m4a");
+            await File.WriteAllTextAsync(path, "録音データ");
+            var (id, _, _) = await AddRecordingFileAsync(fileRelativePath: "audio.m4a");
+            await _dbContext.Database.ExecuteSqlRawAsync("CREATE TRIGGER reject_recording_delete BEFORE DELETE ON Recordings BEGIN SELECT RAISE(ABORT, 'delete failed'); END;");
+            Assert.That(await _service.DeleteRecordedProgramAsync(id), Is.False);
+            Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("録音データ"));
+            _dbContext.ChangeTracker.Clear();
+            Assert.That(await _dbContext.Recordings.FindAsync(id), Is.Not.Null);
+        }
+        finally
+        {
+            await _dbContext.Database.ExecuteSqlRawAsync("DROP TRIGGER IF EXISTS reject_recording_delete;");
+            Directory.Delete(root, true);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task 削除中断後はDBの有無に従って復元または削除する(bool databaseDeleted)
+    {
+        var root = CreateTempDirectory("delete-recovery");
+        try
+        {
+            _configMock.SetupGet(x => x.RecordFileSaveDir).Returns(root);
+            _configMock.SetupGet(x => x.TemporaryFileSaveDir).Returns(root);
+            var (id, _, _) = await AddRecordingFileAsync(fileRelativePath: "audio.m4a");
+            var original = Path.Combine(root, "audio.m4a");
+            var staged = original + $".delete-{id}";
+            await File.WriteAllTextAsync(original, "録音データ");
+            var journal = new RecordingDeletionJournal(_configMock.Object);
+            journal.Write(new(id, [new(original, staged, false)]));
+            File.Move(original, staged);
+            if (databaseDeleted)
+            {
+                _dbContext.Recordings.Remove((await _dbContext.Recordings.FindAsync(id))!);
+                await _dbContext.SaveChangesAsync();
+            }
+            await journal.RecoverAsync(_dbContext, _loggerMock.Object, default);
+            Assert.That(File.Exists(original), Is.EqualTo(!databaseDeleted));
+            Assert.That(File.Exists(staged), Is.False);
+            await journal.RecoverAsync(_dbContext, _loggerMock.Object, default);
+            Assert.That(Directory.GetFiles(Path.Combine(root, "recording-deletion")), Is.Empty);
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     /// <summary>

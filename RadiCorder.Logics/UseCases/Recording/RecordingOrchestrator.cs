@@ -65,16 +65,30 @@ public class RecordingOrchestrator(
                 {
                     try
                     {
-                        execution.MediaPath = await storage.CommitAsync(execution.MediaPath, cancellationToken);
+                        execution.MediaPath = storage is IRecoverableMediaStorageService recoverableStorage
+                            ? await recoverableStorage.CommitRecordingAsync(execution.MediaPath, execution.RecordingId.Value, command.ScheduleJobId, cancellationToken)
+                            : await storage.CommitAsync(execution.MediaPath, cancellationToken);
                         execution.IsCommitted = true;
                         await repository.UpdateFilePathAsync(execution.RecordingId.Value, execution.MediaPath, cancellationToken);
-                        await execution.UpdateStateSafeAsync(RecordingState.Completed, null);
+                        // 完了の永続化失敗を成功として返さない。通知の失敗は許容する。
+                        await execution.UpdateStateRequiredAsync(RecordingState.Completed, null);
+                        if (string.IsNullOrEmpty(command.ScheduleJobId) && storage is IRecoverableMediaStorageService finalizedStorage)
+                        {
+                            finalizedStorage.CompleteFinalization(execution.RecordingId.Value);
+                        }
                         await execution.PublishGlobalToastSafeAsync($"{command.ProgramName} の録音が完了しました。", true);
 
                         return new RecordingResult(true, execution.RecordingId, null);
                     }
                     catch (Exception commitEx)
                     {
+                        if (execution.IsCommitted)
+                        {
+                            const string message = "録音ファイルは保存済みですが、DBの確定に失敗しました。再起動時に復旧します。";
+                            logger.ZLogError(commitEx, $"{message} recordingId={execution.RecordingId} path={execution.MediaPath.FinalFilePath}");
+                            await execution.PublishGlobalToastSafeAsync(message, false);
+                            return new RecordingResult(false, execution.RecordingId, message);
+                        }
                         execution.ShouldPreserveTempFile = true;
                         SaveFailedFallbackResult? fallbackResult = null;
 

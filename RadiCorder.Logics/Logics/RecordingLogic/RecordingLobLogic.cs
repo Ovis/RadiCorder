@@ -171,7 +171,7 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
         /// <summary>
         /// キーワード予約に紐づくタグを録音へ自動付与
         /// </summary>
-        private async ValueTask TryApplyKeywordReserveTagsAsync(string scheduleJobId, Ulid recordingId)
+        internal async ValueTask TryApplyKeywordReserveTagsAsync(string scheduleJobId, Ulid recordingId)
         {
             if (string.IsNullOrEmpty(scheduleJobId) || !Ulid.TryParse(scheduleJobId, out var scheduleJobUlid))
             {

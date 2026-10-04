@@ -114,6 +114,8 @@ public static class LogicServiceCollectionExtensions
         services.AddScoped<IRecordingSource, RadikoRecordingSource>();
         services.AddScoped<IRecordingSource, RadiruRecordingSource>();
         services.AddScoped<IMediaStorageService, MediaStorageService>();
+        services.AddSingleton<RecordingFinalizationJournal>();
+        services.AddScoped<RecordingFinalizationRecovery>();
         services.AddScoped<IMediaTranscodeService, MediaTranscodeService>();
         services.AddScoped<IRecordingRepository, RecordingRepository>();
         services.AddScoped<RecordingLobLogic>();

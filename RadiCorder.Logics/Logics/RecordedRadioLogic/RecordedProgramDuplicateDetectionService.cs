@@ -22,7 +22,7 @@ public class RecordedProgramDuplicateDetectionService(
 {
     private readonly RecordingAudioFingerprintReader _audioReader = new(logger, config, configuration);
 
-    public async ValueTask<(bool IsSuccess, List<RecordedDuplicateCandidateEntry> List, string? ErrorMessage, Exception? Error)> DetectAsync(
+    public virtual async ValueTask<(bool IsSuccess, List<RecordedDuplicateCandidateEntry> List, string? ErrorMessage, Exception? Error)> DetectAsync(
         int lookbackDays,
         int maxPhase1Groups,
         string phase2Mode,
@@ -203,6 +203,7 @@ public class RecordedProgramDuplicateDetectionService(
 
             return (true, result.OrderByDescending(x => x.FinalScore).ToList(), null, null);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"類似録音候補の抽出に失敗しました。");

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RadiCorder.Logics.Logics.RecordedRadioLogic;
@@ -23,6 +22,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         private RecordedProgramMediaService _mediaService;
         private RecordedRadioLobLogic _recordedRadioLogic;
         private RadioDbContext _dbContext;
+        private string _mediaFixtureRoot = null!;
 
         [SetUp]
         public void Setup()
@@ -33,14 +33,10 @@ namespace RadiCorder.Logics.Tests.LogicTest
             _ffmpegServiceMock = new Mock<IFfmpegService>();
 
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                _configMock.SetupGet(x => x.RecordFileSaveDir).Returns(@"D:\");
-            }
-            else
-            {
-                _configMock.SetupGet(x => x.RecordFileSaveDir).Returns(@"/home/");
-            }
+            _mediaFixtureRoot = Path.Combine(Path.GetTempPath(), "radi-recorded-test-" + Guid.NewGuid());
+            Directory.CreateDirectory(_mediaFixtureRoot);
+            _configMock.SetupGet(x => x.RecordFileSaveDir).Returns(_mediaFixtureRoot);
+            _configMock.SetupGet(x => x.TemporaryFileSaveDir).Returns(_mediaFixtureRoot);
 
             // 放送局名解決に使用するため辞書を用意
             var stations = new ConcurrentDictionary<string, string>();
@@ -157,6 +153,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
         [TearDown]
         protected async ValueTask DeleteEntry()
         {
+            Directory.Delete(_mediaFixtureRoot, recursive: true);
             var dbTran = await _dbContext.Database.BeginTransactionAsync();
 
             try

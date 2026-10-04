@@ -23,7 +23,8 @@ public static class RadikoPlaylistProcessor
 
     public static bool IsAllowedRadikoProxyTarget(Uri uri)
     {
-        if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        if (!uri.IsAbsoluteUri || !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            uri.Port != 443 || !string.IsNullOrEmpty(uri.UserInfo))
         {
             return false;
         }

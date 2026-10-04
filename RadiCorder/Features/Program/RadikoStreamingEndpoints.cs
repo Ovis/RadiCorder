@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Application;
 using RadiCorder.Logics.Services;
 using RadiCorder.Logics.Services.Streaming;
 using ZLogger;
@@ -87,8 +88,8 @@ internal static class RadikoStreamingEndpoints
             {
                 using (response)
                 {
-                    var playlist = await response.Content.ReadAsStringAsync(cancellationToken);
-                    var rewritten = RadikoPlaylistProcessor.RewritePlaylistToLocalProxy(playlist, targetUri, effectiveProxyKey);
+                    var playlist = await HttpResponseBodyReader.ReadStringAsync(response.Content, HttpResponseBodyReader.PlaylistLimit, cancellationToken);
+                    var rewritten = RadikoPlaylistProcessor.RewritePlaylistToLocalProxy(playlist, response.RequestMessage?.RequestUri ?? targetUri, effectiveProxyKey);
                     return Results.Content(rewritten, "application/vnd.apple.mpegurl");
                 }
             }
@@ -99,8 +100,10 @@ internal static class RadikoStreamingEndpoints
                 {
                     using (response)
                     {
-                        await using var upstreamStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                        await upstreamStream.CopyToAsync(outputStream, cancellationToken);
+                        using var bodyDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        bodyDeadline.CancelAfter(TimeSpan.FromSeconds(30));
+                        await using var upstreamStream = await response.Content.ReadAsStreamAsync(bodyDeadline.Token);
+                        await upstreamStream.CopyToAsync(outputStream, bodyDeadline.Token);
                     }
                 },
                 contentType);

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RadiCorder.Logics.BackgroundServices;
 using Microsoft.Extensions.DependencyInjection;
 using RadiCorder.Logics.Domain.AppEvent;
 using RadiCorder.Logics.Logics.NotificationLogic;
@@ -16,15 +17,24 @@ public class RecordedDuplicateDetectionLobLogic(
     RecordedProgramDuplicateDetectionService detectionService,
     NotificationLobLogic notificationLobLogic,
     IRecordedDuplicateDetectionStatusPublisher? statusPublisher = null,
-    IAppToastEventPublisher? appToastEventPublisher = null)
+    IAppToastEventPublisher? appToastEventPublisher = null,
+    DuplicateDetectionQueue? duplicateDetectionQueue = null)
 {
+    private readonly DuplicateDetectionQueue? _queue = duplicateDetectionQueue ?? ResolveQueue(serviceScopeFactory);
+
+    private static DuplicateDetectionQueue? ResolveQueue(IServiceScopeFactory factory)
+    {
+        using var scope = factory.CreateScope();
+        return scope.ServiceProvider.GetService<DuplicateDetectionQueue>();
+    }
+
     private static readonly SemaphoreSlim ExecutionGate = new(1, 1);
     private static readonly object StatusLock = new();
     private static readonly object CandidateLock = new();
     private static RecordedDuplicateDetectionStatusEntry _status = new();
     private static List<RecordedDuplicateCandidateEntry> _lastCandidates = [];
 
-    public async ValueTask<(bool IsSuccess, string Message, Exception? Error)> StartImmediateAsync(
+    public ValueTask<(bool IsSuccess, string Message, Exception? Error)> StartImmediateAsync(
         int lookbackDays = 30,
         int maxPhase1Groups = 100,
         string phase2Mode = "light",
@@ -35,29 +45,11 @@ public class RecordedDuplicateDetectionLobLogic(
         var normalizedPhase2Mode = NormalizePhase2Mode(phase2Mode);
         var normalizedBroadcastClusterWindowHours = NormalizeBroadcastClusterWindowHours(broadcastClusterWindowHours);
 
-        // 即時実行はスケジューラを介さず、バックグラウンドタスクとして直接起動する。
-        _ = Task.Run(
-            async () =>
-            {
-                try
-                {
-                    // バックグラウンド用にスコープを作り直し、破棄済みスコープ参照を回避する。
-                    using var scope = serviceScopeFactory.CreateScope();
-                    var scopedLogic = scope.ServiceProvider.GetRequiredService<RecordedDuplicateDetectionLobLogic>();
-                    await scopedLogic.ExecuteAsync(
-                        "manual",
-                        normalizedLookbackDays,
-                        normalizedMaxPhase1Groups,
-                        normalizedPhase2Mode,
-                        normalizedBroadcastClusterWindowHours);
-                }
-                catch (Exception ex)
-                {
-                    logger.ZLogError(ex, $"同一番組候補チェックジョブの起動後実行で例外が発生しました。");
-                }
-            });
-
-        return (true, "同一番組候補チェックジョブを開始しました。完了後にお知らせへ通知されます。", null);
+        var accepted = !GetStatus().IsRunning && _queue?.TryEnqueue(new(
+            normalizedLookbackDays, normalizedMaxPhase1Groups, normalizedPhase2Mode, normalizedBroadcastClusterWindowHours)) == true;
+        return ValueTask.FromResult<(bool IsSuccess, string Message, Exception? Error)>(accepted
+            ? (true, "同一番組候補チェックジョブを開始しました。完了後にお知らせへ通知されます。", null)
+            : (false, "同一番組候補チェックは実行中、またはWorkerを利用できません。", null));
     }
 
     public RecordedDuplicateDetectionStatusEntry GetStatus()

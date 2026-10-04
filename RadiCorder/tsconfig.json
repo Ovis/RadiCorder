@@ -8,7 +8,7 @@
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./wwwroot/js",
-    "lib": [ "es2015", "es2017", "dom" ]
+    "lib": [ "es2019", "dom" ]
   },
   "include": [
     "Scripts/**/*.ts"

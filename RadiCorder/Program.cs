@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.FileProviders;
 using RadiCorder.Application;
 using RadiCorder.DependencyInjection;
-using RadiCorder.Filters;
 using RadiCorder.Logics.Infrastructure.Recording;
 using RadiCorder.Logics.Logics;
 using RadiCorder.Logics.RdbContext;
@@ -26,10 +25,7 @@ if (OperatingSystem.IsLinux())
 }
 
 // Add services to the container.
-builder.Services.AddControllersWithViews(options =>
-{
-    options.Filters.Add<ApiExceptionFilter>();
-});
+builder.Services.AddControllersWithViews();
 
 // Configuration
 var config = builder.Configuration;
@@ -111,6 +107,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.UseMiddleware<RequestLoggingScopeMiddleware>();
 

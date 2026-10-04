@@ -72,6 +72,13 @@ public static class LogicServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
+        services.AddHttpClient(HttpClientNames.RadikoStreaming).ConfigurePrimaryHttpMessageHandler(() =>
+            new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.Brotli | DecompressionMethods.GZip | DecompressionMethods.Deflate
+            }).ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHttpClient(HttpClientNames.Radiru).ConfigurePrimaryHttpMessageHandler(() =>
         {
             var handler = new HttpClientHandler
@@ -131,6 +138,7 @@ public static class LogicServiceCollectionExtensions
     {
         services.AddSingleton<IProgramUpdateStatusService, ProgramUpdateStatusService>();
         services.AddSingleton<ProgramUpdateQueue>();
+        services.AddSingleton<DuplicateDetectionQueue>();
         services.AddScoped<IRadioAppContext, RadioAppContext>();
         services.AddScoped<IStationRepository, StationRepository>();
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
@@ -200,6 +208,7 @@ public static class LogicServiceCollectionExtensions
         services.AddHostedService<ClockSkewMonitorBackgroundService>();
         services.AddHostedService<ReleaseCheckBackgroundService>();
         services.AddHostedService<DuplicateDetectionScheduleBackgroundService>();
+        services.AddHostedService<DuplicateDetectionWorker>();
         return services;
     }
 }

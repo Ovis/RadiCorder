@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Moq;
-using System.Reflection;
 using RadiCorder.Logics.Domain.Notification;
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Errors;
@@ -248,16 +247,15 @@ public class ProgramScheduleLobLogicTests
     }
 
     [Test]
-    public async Task SearchRadikoProgramAsync_例外時は空配列()
+    public async Task SearchRadikoProgramAsync_例外を呼び出し元へ返す()
     {
         var (logic, repoMock, context) = CreateTarget();
 
         repoMock.Setup(r => r.SearchRadikoProgramsAsync(It.IsAny<ProgramSearchEntity>(), context.StandardDateTimeOffset, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("db error"));
 
-        var result = await logic.SearchRadikoProgramAsync(new ProgramSearchEntity());
-
-        Assert.That(result, Is.Empty);
+        Assert.That(async () => await logic.SearchRadikoProgramAsync(new ProgramSearchEntity()),
+            Throws.Exception.With.Message.EqualTo("db error"));
     }
 
     [Test]
@@ -654,7 +652,7 @@ public class ProgramScheduleLobLogicTests
     }
 
     [Test]
-    public void UpsertDailyProgramDataAsync_必須項目不足は更新を中止して既存データを保持する()
+    public async Task SynchronizeRadiruProgramsAsync_必須項目不足は更新を中止して既存データを保持する()
     {
         var (logic, repoMock, _, _, radiruApiClient) = CreateTargetWithClients();
         var now = DateTimeOffset.Now;
@@ -686,17 +684,11 @@ public class ProgramScheduleLobLogicTests
             .Callback<IEnumerable<NhkRadiruProgram>, CancellationToken>((entries, _) => saved = entries.ToList())
             .Returns(ValueTask.CompletedTask);
 
-        var method = typeof(ProgramScheduleLobLogic).GetMethod(
-            "UpsertDailyProgramDataAsync",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.That(method, Is.Not.Null);
-
-        var invoked = method!.Invoke(
-            logic,
-            ["130", "r1", now]);
-
-        Assert.ThrowsAsync<DomainException>(async () => await (ValueTask<bool>)invoked!);
+        radiruApiClient.AreaServices = [("130", "r1")];
+        var report = await logic.SynchronizeRadiruProgramsAsync(default);
+        Assert.That(report.IsSuccess, Is.False);
+        Assert.That(report.Failures, Has.Count.EqualTo(15));
+        Assert.That(report.Failures.All(x => x.Error is DomainException), Is.True);
         Assert.That(saved, Is.Null);
     }
 
@@ -738,19 +730,18 @@ public class ProgramScheduleLobLogicTests
     }
 
     /// <summary>
-    /// らじる★らじる検索で例外時は空配列
+    /// らじる★らじる検索でDB障害を空結果に変換しない
     /// </summary>
     [Test]
-    public async Task SearchRadiruProgramAsync_例外時は空配列()
+    public async Task SearchRadiruProgramAsync_例外を呼び出し元へ返す()
     {
         var (logic, repoMock, context) = CreateTarget();
 
         repoMock.Setup(r => r.SearchRadiruProgramsAsync(It.IsAny<ProgramSearchEntity>(), context.StandardDateTimeOffset, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("db error"));
 
-        var result = await logic.SearchRadiruProgramAsync(new ProgramSearchEntity());
-
-        Assert.That(result, Is.Empty);
+        Assert.That(async () => await logic.SearchRadiruProgramAsync(new ProgramSearchEntity()),
+            Throws.Exception.With.Message.EqualTo("db error"));
     }
 
     /// <summary>

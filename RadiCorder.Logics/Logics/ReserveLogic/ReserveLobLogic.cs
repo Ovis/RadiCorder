@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using RadiCorder.Logics.Context;
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Domain.Reserve;
@@ -27,7 +29,8 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
         NotificationLobLogic notificationLobLogic,
         TagLobLogic tagLobLogic,
         IEntryMapper entryMapper,
-        IReserveScheduleEventPublisher? reserveScheduleEventPublisher = null)
+        IReserveScheduleEventPublisher? reserveScheduleEventPublisher = null,
+        IServiceScopeFactory? serviceScopeFactory = null)
     {
         /// <summary>
         /// 録音予約リスト取得
@@ -232,15 +235,17 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                 }
 
                 // スケジューラからジョブを削除
-                await recordJobLobLogic.DeleteScheduleJobAsync(job.Id);
+                var (cancelled, error) = await recordJobLobLogic.DeleteScheduleJobAsync(job.Id);
+                if (!cancelled) return (false, error);
 
                 try
                 {
                     await reserveRepository.RemoveScheduleJobAsync(job);
                 }
-                catch
+                catch (DbUpdateConcurrencyException)
                 {
-                    // 実行中処理との競合で既に削除されていた場合も成功扱い
+                    if (await reserveRepository.GetScheduleJobSnapshotAsync(id) != null) throw;
+                    // 実行中処理との競合で削除済みと確認できた場合だけ成功扱い。
                 }
                 await PublishReserveScheduleChangedSafeAsync();
 
@@ -309,6 +314,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
             catch (Exception e)
             {
                 logger.ZLogError(e, $"古い予約情報の削除処理に失敗");
+                throw;
             }
         }
 

@@ -13,7 +13,7 @@ public class RadikoStreamingTests
     public async Task Proxy_既存のルートとticketとplaylist応答を維持する(string route)
     {
         await using var host = new WebTestHost();
-        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.Radiko)
+        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.RadikoStreaming)
             .ConfigurePrimaryHttpMessageHandler(() => new FixtureHandler()));
         var ticket = host.App.Services.GetRequiredService<IRadikoProxyTicketService>().IssueTokenTicket("fixture-token");
         using var response = await host.Client.GetAsync($"{route}?target={Uri.EscapeDataString("https://radiko.jp/media.m3u8")}&proxyKey={ticket}");
@@ -49,7 +49,7 @@ public class RadikoStreamingTests
     {
         var targets = new List<string>();
         await using var host = new WebTestHost();
-        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.Radiko)
+        await host.StartAsync(services => services.AddHttpClient(HttpClientNames.RadikoStreaming)
             .ConfigurePrimaryHttpMessageHandler(() => new PlaylistChainHandler(mode, targets)));
         var ticket = host.App.Services.GetRequiredService<IRadikoProxyTicketService>().IssueTokenTicket("fixture-token");
         var target = mode == "binary" ? "https://radiko.jp/live/segment.aac" : "https://radiko.jp/master.m3u8";

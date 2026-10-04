@@ -25,7 +25,8 @@ public static class HttpClientExecutionHelper
         Func<HttpRequestMessage> requestFactory,
         string? userAgent = null,
         CancellationToken cancellationToken = default,
-        Func<CancellationToken, ValueTask>? beforeAttempt = null)
+        Func<CancellationToken, ValueTask>? beforeAttempt = null,
+        bool responseHeadersOnly = false)
     {
         return await ApiRetryPolicy.ExecuteAsync(
             logger,
@@ -39,7 +40,7 @@ public static class HttpClientExecutionHelper
                 {
                     request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
                 }
-                var response = await httpClient.SendAsync(request, ct);
+                var response = await httpClient.SendAsync(request, responseHeadersOnly ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead, ct);
                 if (IsTransientFailure(response.StatusCode))
                 {
                     var retryAfter = response.Headers.RetryAfter;

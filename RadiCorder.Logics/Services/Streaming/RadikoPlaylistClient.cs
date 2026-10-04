@@ -13,11 +13,11 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
     private static readonly TimeSpan LivePlaylistStartSyncPollInterval = TimeSpan.FromSeconds(1);
 
     public Task<HttpResponseMessage> SendAsync(Uri targetUri, string token, CancellationToken cancellationToken) =>
-        SendRadikoProxyRequestAsync(httpClientFactory.CreateClient(HttpClientNames.Radiko), config, targetUri, token, cancellationToken);
+        SendRadikoProxyRequestAsync(httpClientFactory.CreateClient(HttpClientNames.RadikoStreaming), config, targetUri, token, cancellationToken);
 
     public Task<(string? Playlist, Uri? PlaylistBaseUri, int StatusCode)> ResolveLiveAsync(
         ILogger logger, Uri targetUri, string token, DateTimeOffset? recordingStartUtc, CancellationToken cancellationToken) =>
-        ResolveLivePlaylistAsync(logger, httpClientFactory.CreateClient(HttpClientNames.Radiko), config, targetUri, token, recordingStartUtc, cancellationToken);
+        ResolveLivePlaylistAsync(logger, httpClientFactory.CreateClient(HttpClientNames.RadikoStreaming), config, targetUri, token, recordingStartUtc, cancellationToken);
 
     private static async Task<HttpResponseMessage> SendRadikoProxyRequestAsync(
         HttpClient client,
@@ -26,13 +26,21 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
         string token,
         CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, targetUri);
-        request.Headers.TryAddWithoutValidation("X-Radiko-Authtoken", token);
-        request.Headers.TryAddWithoutValidation("User-Agent", config.ExternalServiceUserAgent);
-        return await client.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        for (var redirectCount = 0; redirectCount <= 5; redirectCount++)
+        {
+            if (!RadikoPlaylistProcessor.IsAllowedRadikoProxyTarget(targetUri))
+                throw new HttpRequestException("radiko配信URLの接続先が許可されていません。");
+            using var request = new HttpRequestMessage(HttpMethod.Get, targetUri);
+            request.Headers.Add("X-Radiko-Authtoken", token);
+            request.Headers.TryAddWithoutValidation("User-Agent", config.ExternalServiceUserAgent);
+            var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if ((int)response.StatusCode is not (301 or 302 or 303 or 307 or 308)) return response;
+            var location = response.Headers.Location;
+            response.Dispose();
+            if (location == null) throw new HttpRequestException("radiko配信のリダイレクト先がありません。");
+            targetUri = new Uri(targetUri, location);
+        }
+        throw new HttpRequestException("radiko配信のリダイレクト回数が上限を超えました。");
     }
 
     private static async Task<(string? Playlist, Uri? PlaylistBaseUri, int StatusCode)> ResolveLivePlaylistAsync(
@@ -50,7 +58,8 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
             return (null, null, (int)upstreamResponse.StatusCode);
         }
 
-        var upstreamContent = await upstreamResponse.Content.ReadAsStringAsync(cancellationToken);
+        targetUri = upstreamResponse.RequestMessage?.RequestUri ?? targetUri;
+        var upstreamContent = await HttpResponseBodyReader.ReadStringAsync(upstreamResponse.Content, HttpResponseBodyReader.PlaylistLimit, cancellationToken);
         if (!upstreamContent.Contains("#EXT-X-STREAM-INF", StringComparison.Ordinal))
         {
             logger.ZLogDebug($"radiko live proxy target is already media playlist. target={targetUri}");
@@ -80,7 +89,8 @@ public class RadikoPlaylistClient(IHttpClientFactory httpClientFactory, IAppConf
                 return (null, null, (int)mediaPlaylistResponse.StatusCode);
             }
 
-            mediaPlaylist = await mediaPlaylistResponse.Content.ReadAsStringAsync(cancellationToken);
+            mediaPlaylistUri = mediaPlaylistResponse.RequestMessage?.RequestUri ?? mediaPlaylistUri;
+            mediaPlaylist = await HttpResponseBodyReader.ReadStringAsync(mediaPlaylistResponse.Content, HttpResponseBodyReader.PlaylistLimit, cancellationToken);
             if (recordingStartUtc is null)
             {
                 break;

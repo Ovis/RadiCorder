@@ -39,8 +39,10 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
         sampleSeconds = Math.Min(sampleSeconds, (int)Math.Max(recording.DurationSeconds - 2d, 30d));
         var startSeconds = Math.Max(0d, (recording.DurationSeconds - sampleSeconds) / 2d);
 
-        var args =
-            $"-hide_banner -loglevel error -nostdin -ss {startSeconds.ToString("0.###", CultureInfo.InvariantCulture)} -i \"{path}\" -t {sampleSeconds.ToString(CultureInfo.InvariantCulture)} -vn -ac 1 -ar {DuplicateSimilarity.AudioSampleRate} -f s16le -";
+        string[] args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-ss",
+            startSeconds.ToString("0.###", CultureInfo.InvariantCulture), "-i", path, "-t",
+            sampleSeconds.ToString(CultureInfo.InvariantCulture), "-vn", "-ac", "1", "-ar",
+            DuplicateSimilarity.AudioSampleRate.ToString(CultureInfo.InvariantCulture), "-f", "s16le", "-"];
 
         try
         {
@@ -56,6 +58,7 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
             cache[recording.RecordingId] = bins;
             return bins;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             logger.ZLogWarning(ex, $"類似抽出: 音声指紋化に失敗 recordingId={recording.RecordingId}");
@@ -76,7 +79,7 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
 
     private static async ValueTask<(int ExitCode, byte[] StdOut, string StdErr)> ExecuteProcessAsync(
         string fileName,
-        string arguments,
+        IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
         using var process = new Process
@@ -84,7 +87,6 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
             StartInfo = new ProcessStartInfo
             {
                 FileName = fileName,
-                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -92,14 +94,27 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
             }
         };
 
+        foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
         process.Start();
 
-        var stdOutTask = ReadAllBytesAsync(process.StandardOutput.BaseStream, cancellationToken);
-        var stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(120));
-
-        await process.WaitForExitAsync(timeoutCts.Token);
+        var stdOutTask = ReadAllBytesAsync(process.StandardOutput.BaseStream, CancellationToken.None).AsTask();
+        var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) when (process.HasExited) { }
+                await process.WaitForExitAsync(CancellationToken.None);
+            }
+            await Task.WhenAll(stdOutTask, stdErrTask);
+        }
         var stdOut = await stdOutTask;
         var stdErr = await stdErrTask;
 

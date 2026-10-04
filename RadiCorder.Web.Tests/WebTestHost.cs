@@ -23,13 +23,13 @@ internal sealed class WebTestHost : IAsyncDisposable
     public WebApplication App { get; private set; } = null!;
     public HttpClient Client { get; private set; } = null!;
 
-    public async Task StartAsync(Action<IServiceCollection>? configure = null)
+    public async Task StartAsync(Action<IServiceCollection>? configure = null, string environmentName = "Development", Action<WebApplication>? configureApp = null)
     {
         Directory.CreateDirectory(_root);
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             ApplicationName = typeof(ProgramEndpoints).Assembly.FullName,
-            EnvironmentName = Environments.Development,
+            EnvironmentName = environmentName,
             ContentRootPath = _root
         });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -63,8 +63,10 @@ internal sealed class WebTestHost : IAsyncDisposable
         {
             await scope.ServiceProvider.GetRequiredService<RadioDbContext>().Database.MigrateAsync();
         }
+        App.UseAntiforgery();
         App.MapRadiCorderEndpoints();
         App.MapOpenApi();
+        configureApp?.Invoke(App);
         await App.StartAsync();
         Client = new HttpClient { BaseAddress = new Uri(App.Urls.Single()) };
     }

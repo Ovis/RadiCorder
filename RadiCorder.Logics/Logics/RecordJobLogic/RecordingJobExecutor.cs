@@ -57,7 +57,7 @@ public class RecordingJobExecutor(
             $"録音ジョブの実行準備を開始します。 jobId={jobId} programId={job.ProgramId} title={job.Title} recordingType={job.RecordingType} start={job.StartDateTime:O} end={job.EndDateTime:O} prepareStartUtc={job.PrepareStartUtc:O}");
 
         var preparingUpdated = await dbContext.ScheduleJob
-            .Where(x => x.Id == jobId && x.State == ScheduleJobState.Queued)
+            .Where(x => x.Id == jobId && x.State == ScheduleJobState.Queued && x.IsEnabled)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.State, ScheduleJobState.Preparing), cancellationToken);
         if (preparingUpdated != 1)
@@ -75,7 +75,7 @@ public class RecordingJobExecutor(
         }
 
         var recordingUpdated = await dbContext.ScheduleJob
-            .Where(x => x.Id == jobId && x.State == ScheduleJobState.Preparing)
+            .Where(x => x.Id == jobId && x.State == ScheduleJobState.Preparing && x.IsEnabled)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.State, ScheduleJobState.Recording)
                 .SetProperty(x => x.ActualStartUtc, DateTimeOffset.UtcNow), cancellationToken);
@@ -143,6 +143,16 @@ public class RecordingJobExecutor(
             {
                 dbContext.ScheduleJob.Remove(job);
                 await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.ZLogError(ex, $"録音後処理でScheduleJob削除に失敗しました。 jobId={jobId}");
+                await MarkJobFailedAsync(dbContext, job, ScheduleJobErrorCode.FinalizeFailed, ex.Message, cancellationToken);
+                return;
+            }
+
+            try
+            {
                 if (mediaStorageService is IRecoverableMediaStorageService recoverableStorage)
                 {
                     // DBの後処理まで成功した場合だけ、復旧記録を解放する。
@@ -151,8 +161,8 @@ public class RecordingJobExecutor(
             }
             catch (Exception ex)
             {
-                logger.ZLogError(ex, $"録音後処理でScheduleJob削除に失敗しました。 jobId={jobId}");
-                await MarkJobFailedAsync(dbContext, job, ScheduleJobErrorCode.FinalizeFailed, ex.Message, cancellationToken);
+                // DB確定後の掃除に失敗しても録音を失敗へ戻さず、次回復旧へ残す。
+                logger.ZLogWarning(ex, $"録音確定の復旧情報を解放できませんでした。 jobId={jobId}");
             }
         }
         catch (OperationCanceledException)
@@ -184,7 +194,7 @@ public class RecordingJobExecutor(
         using var finalizationCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var nextState = isCancelled || errorCode == ScheduleJobErrorCode.Cancelled ? ScheduleJobState.Cancelled : ScheduleJobState.Failed;
         await dbContext.ScheduleJob
-            .Where(x => x.Id == job.Id && x.IsEnabled && x.State != ScheduleJobState.Completed && x.State != ScheduleJobState.Cancelled && x.State != ScheduleJobState.Failed)
+            .Where(x => x.Id == job.Id && x.State != ScheduleJobState.Completed && x.State != ScheduleJobState.Cancelled && x.State != ScheduleJobState.Failed)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.State, nextState)
                 .SetProperty(x => x.LastErrorCode, errorCode)

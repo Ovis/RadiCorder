@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Domain.Reserve;
 using Microsoft.Extensions.Logging;
@@ -259,12 +260,19 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
             var (keywordReserves, stations)
                 = await GetKeywordReserveListFromDbAsync();
 
+            var report = new ProgramSyncReport();
             foreach (var keywordReserve in keywordReserves)
             {
-                await SetRadioProgramScheduleAsync(
-                    keywordReserve,
-                    stations.Where(r => r.Id == keywordReserve.Id).ToList());
+                await report.RunAsync(keywordReserve.Keyword ?? keywordReserve.Id.ToString(), async () =>
+                {
+                    // ルールごとのDB障害を次のルールへ持ち越さない。
+                    using var scope = serviceScopeFactory?.CreateScope();
+                    var logic = scope?.ServiceProvider.GetRequiredService<ReserveLobLogic>() ?? this;
+                    await logic.SetRadioProgramScheduleAsync(keywordReserve,
+                        stations.Where(r => r.Id == keywordReserve.Id).ToList());
+                }, CancellationToken.None);
             }
+            report.ThrowIfFailed();
         }
 
 
@@ -272,25 +280,29 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
         {
             try
             {
-                var scheduleJob = await reserveRepository.GetScheduleJobByIdAsync(id);
+                var scheduleJob = await reserveRepository.GetScheduleJobSnapshotAsync(id);
 
                 if (scheduleJob == null)
                 {
                     return (false, new DomainException("指定されたIDの予約データが見つかりません。"));
                 }
 
-                scheduleJob.IsEnabled = !scheduleJob.IsEnabled;
-
-                await reserveRepository.UpdateScheduleJobAsync(scheduleJob);
-
-
                 if (scheduleJob.IsEnabled)
                 {
-                    await recordJobLobLogic.SetScheduleJobAsync(scheduleJob);
+                    if (!await reserveRepository.TryDisableScheduleJobAsync(id))
+                        throw new DomainException("録音予約の状態が変わったため無効化できませんでした。");
+                    await recordJobLobLogic.CancelScheduleJobAndWaitAsync(id);
                 }
                 else
                 {
-                    await recordJobLobLogic.DeleteScheduleJobAsync(scheduleJob.Id);
+                    await recordJobLobLogic.CancelScheduleJobAndWaitAsync(id);
+                    scheduleJob = await reserveRepository.GetScheduleJobSnapshotAsync(id)
+                        ?? throw new DomainException("録音予約が削除されています。");
+                    var expectedState = scheduleJob.State;
+                    recordJobLobLogic.PrepareForReactivation(scheduleJob);
+                    if (!await reserveRepository.TryReactivateScheduleJobAsync(scheduleJob, expectedState))
+                        throw new DomainException("録音予約の状態が変わったため再有効化できませんでした。");
+                    recordJobLobLogic.NotifyScheduleChanged();
                 }
 
                 await PublishReserveScheduleChangedSafeAsync();
@@ -420,6 +432,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
                     category: NoticeCategory.KeywordReserveError,
                     message: $"キーワード予約の登録に失敗しました。キーワード:{keywordReserve.Keyword}"
                 );
+                throw;
             }
         }
 
@@ -804,5 +817,3 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
     }
 
 }
-
-

@@ -267,8 +267,9 @@ public class StationRepository(RadioDbContext dbContext) : IStationRepository
                 {
                     existing.AreaJpName = area.AreaJpName;
                     existing.ApiKey = area.ApiKey;
-                    existing.ProgramNowOnAirApiUrl = area.ProgramNowOnAirApiUrl;
-                    existing.ProgramDetailApiUrlTemplate = area.ProgramDetailApiUrlTemplate;
+                    // 現在の番組表取得では使わない任意URLは、欠落時に保存済み値を消さない。
+                    if (!string.IsNullOrWhiteSpace(area.ProgramNowOnAirApiUrl)) existing.ProgramNowOnAirApiUrl = area.ProgramNowOnAirApiUrl;
+                    if (!string.IsNullOrWhiteSpace(area.ProgramDetailApiUrlTemplate)) existing.ProgramDetailApiUrlTemplate = area.ProgramDetailApiUrlTemplate;
                     existing.DailyProgramApiUrlTemplate = area.DailyProgramApiUrlTemplate;
                     existing.LastSyncedAtUtc = area.LastSyncedAtUtc;
                 }

@@ -11,34 +11,37 @@ namespace RadiCorder.Logics.Infrastructure.Recording;
 
 internal static class RecordingFfmpegArguments
 {
-    public static void AppendHeaders(StringBuilder command, IReadOnlyDictionary<string, string> headers)
+    public static void AppendHeaders(FfmpegCommandBuilder command, IReadOnlyDictionary<string, string> headers)
     {
         if (headers.Count == 0)
             return;
 
+        if (headers.Any(h => string.IsNullOrWhiteSpace(h.Key) || h.Key.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-') ||
+            h.Value.Contains('\r') || h.Value.Contains('\n')))
+            throw new ArgumentException("録音元のHTTPヘッダーが不正です。", nameof(headers));
         var headerValue = string.Join("\r\n", headers.Select(h => $"{h.Key}: {h.Value}")) + "\r\n";
-        command.Append($" -headers \"{headerValue}\"");
+        command.Add("-headers", headerValue);
     }
 
-    public static void AppendUserAgent(StringBuilder command, string userAgent)
+    public static void AppendUserAgent(FfmpegCommandBuilder command, string userAgent)
     {
         if (string.IsNullOrWhiteSpace(userAgent))
         {
             return;
         }
 
-        command.Append($" -user_agent \"{userAgent.ToSafeNameAndSafeCommandParameter()}\"");
+        command.Add("-user_agent", userAgent.ToSafeNameAndSafeCommandParameter());
     }
 
-    public static void AppendProgramInfo(StringBuilder command, ProgramRecordingInfo programInfo)
+    public static void AppendProgramInfo(FfmpegCommandBuilder command, ProgramRecordingInfo programInfo)
     {
-        command.Append($" -metadata title=\"{programInfo.Title.ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata comment=\"{programInfo.Description.ExtractTextFromHtml().ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata artist=\"{programInfo.Performer.ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata date=\"{programInfo.StartTime.ToJapanDateTime()}\"");
+        command.Add("-metadata", "title=" + programInfo.Title.ToSafeNameAndSafeCommandParameter());
+        command.Add("-metadata", "comment=" + programInfo.Description.ExtractTextFromHtml().ToSafeNameAndSafeCommandParameter());
+        command.Add("-metadata", "artist=" + programInfo.Performer.ToSafeNameAndSafeCommandParameter());
+        command.Add("-metadata", $"date={programInfo.StartTime.ToJapanDateTime()}");
     }
 
-    public static void AppendAudio(StringBuilder command, RecordingAcquisitionPlan plan)
+    public static void AppendAudio(FfmpegCommandBuilder command, RecordingAcquisitionPlan plan)
     {
         command.Append(plan.AudioOutput == RecordingAudioOutput.CopyAac
             ? " -acodec copy -vn -bsf:a aac_adtstoasc" : " -acodec aac -vn");

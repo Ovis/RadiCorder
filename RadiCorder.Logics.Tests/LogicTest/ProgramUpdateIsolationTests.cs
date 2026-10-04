@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using RadiCorder.Logics.DependencyInjection;
 using RadiCorder.Logics.Domain.Recording;
+using RadiCorder.Logics.Domain.Reserve;
 using RadiCorder.Logics.Interfaces;
 using RadiCorder.Logics.Logics.ProgramScheduleLogic;
 using RadiCorder.Logics.Models.NhkRadiru.JsonEntity;
@@ -15,8 +16,10 @@ namespace RadiCorder.Logics.Tests.LogicTest;
 
 public class ProgramUpdateIsolationTests
 {
-    [Test]
-    public async Task Radiko障害時もNHKを更新し全体の成功日時を変更しない()
+    [TestCase(null)]
+    [TestCase("古い予約の削除")]
+    [TestCase("キーワード予約")]
+    public async Task 個別障害時もNHKを更新し全体の成功日時を変更しない(string? additionalFailure)
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -42,6 +45,18 @@ public class ProgramUpdateIsolationTests
         services.AddSingleton(Mock.Of<IRadikoProxyTicketService>());
         services.AddSingleton(Mock.Of<ILocalApplicationUrlService>());
         services.AddSingleton(Mock.Of<IFfmpegService>());
+        if (additionalFailure != null)
+        {
+            var reserves = new Mock<IReserveRepository>();
+            reserves.Setup(x => x.GetScheduleJobsOlderThanAsync(It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleJob>());
+            reserves.Setup(x => x.GetKeywordReservesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<KeywordReserve>());
+            reserves.Setup(x => x.GetKeywordReserveRadioStationsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<KeywordReserveRadioStation>());
+            if (additionalFailure == "古い予約の削除")
+                reserves.Setup(x => x.GetScheduleJobsOlderThanAsync(It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("cleanup failure"));
+            else
+                reserves.Setup(x => x.GetKeywordReservesAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("keyword failure"));
+            services.AddSingleton(reserves.Object);
+        }
         await using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RadioDbContext>();
@@ -54,6 +69,7 @@ public class ProgramUpdateIsolationTests
         var status = provider.GetRequiredService<IProgramUpdateStatusService>().GetCurrent();
         Assert.That(status.LastSucceeded, Is.False);
         Assert.That(status.Message, Does.Contain("radiko"));
+        if (additionalFailure != null) Assert.That(status.Message, Does.Contain(additionalFailure));
         db.ChangeTracker.Clear();
         Assert.That((await db.AppConfigurations.SingleAsync()).Val4, Is.EqualTo(lastSucceeded));
     }

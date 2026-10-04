@@ -11,6 +11,27 @@ namespace RadiCorder.Logics.Tests.LogicTest;
 /// </summary>
 public class MediaStorageServiceTests
 {
+    [Test]
+    public void 他の復旧情報が破損していても対象ジョブの後処理を完了する()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var config = CreateConfig(root, root, null, null);
+            var journal = new RecordingFinalizationJournal(config.Object);
+            var jobId = Ulid.NewUlid();
+            var targetId = Ulid.NewUlid();
+            var otherId = Ulid.NewUlid();
+            journal.Write(new(targetId, jobId.ToString(), new MediaPath("temp", Path.Combine(root, "good.m4a"), "good.m4a")));
+            journal.Write(new(otherId, Ulid.NewUlid().ToString(), new MediaPath("temp", Path.Combine(root, "other.m4a"), "other.m4a")));
+            var broken = Path.Combine(root, "recording-finalization", Ulid.NewUlid() + ".json");
+            File.WriteAllText(broken, "{broken");
+            new MediaStorageService(config.Object, finalizationJournal: journal).CompleteJobFinalization(jobId);
+            Assert.That(journal.GetPendingFiles().Select(Path.GetFileName), Is.EquivalentTo(new[] { Path.GetFileName(broken), otherId + ".json" }));
+        }
+        finally { SafeDeleteDirectory(root); }
+    }
+
     /// <summary>
     /// テンプレート指定時にパスが正しく構成される
     /// </summary>

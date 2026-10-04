@@ -111,12 +111,10 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             catch (Exception e)
             {
                 logger.ZLogError(e, $"らじる\u2605らじるの過去の番組データ削除に失敗");
+                throw;
             }
         }
 
-
-        private async ValueTask<bool> UpsertDailyProgramDataAsync(string areaId, string serviceId, DateTimeOffset dt)
-            => await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dt, default);
 
         private async ValueTask<bool> UpsertDailyProgramDataCoreAsync(string areaId, string serviceId, DateTimeOffset dt, CancellationToken cancellationToken)
         {
@@ -174,7 +172,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             catch (Exception ex)
             {
                 logger.ZLogError(ex, $"番組検索に失敗しました。");
-                return [];
+                throw;
             }
         }
     }

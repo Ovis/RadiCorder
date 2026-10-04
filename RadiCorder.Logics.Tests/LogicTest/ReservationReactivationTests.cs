@@ -50,6 +50,25 @@ public class ReservationReactivationTests
         Directory.Delete(_root, true);
     }
 
+    [Test]
+    public async Task 予約削除のDB障害を成功扱いせず次の削除にも持ち越さない()
+    {
+        var firstId = await SeedAsync(ScheduleJobState.Pending, true);
+        var secondId = await SeedAsync(ScheduleJobState.Pending, true);
+        using var scope = _provider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RadioDbContext>();
+        var first = await db.ScheduleJob.FindAsync(firstId);
+        #pragma warning disable EF1002 // テストで生成したULIDだけをトリガー条件へ埋め込む。
+        await db.Database.ExecuteSqlRawAsync($"CREATE TRIGGER reject_reserve_delete BEFORE DELETE ON ScheduleJob WHEN OLD.Id = '{firstId}' BEGIN SELECT RAISE(ABORT, 'fixture failure'); END;");
+        #pragma warning restore EF1002
+        var logic = scope.ServiceProvider.GetRequiredService<ReserveLobLogic>();
+        Assert.That((await logic.DeleteProgramReserveEntryAsync(firstId)).IsSuccess, Is.False);
+        Assert.That(db.Entry(first!).State, Is.EqualTo(EntityState.Unchanged));
+        Assert.That((await logic.DeleteProgramReserveEntryAsync(secondId)).IsSuccess, Is.True);
+        Assert.That(await db.ScheduleJob.AsNoTracking().AnyAsync(x => x.Id == firstId), Is.True);
+        Assert.That(await db.ScheduleJob.AsNoTracking().AnyAsync(x => x.Id == secondId), Is.False);
+    }
+
     [TestCase(ScheduleJobState.Pending)]
     [TestCase(ScheduleJobState.Cancelled)]
     [TestCase(ScheduleJobState.Failed)]

@@ -70,19 +70,13 @@ public class ReserveRepository(RadioDbContext dbContext) : IReserveRepository
     /// </summary>
     public async ValueTask RemoveScheduleJobAsync(ScheduleJob job, CancellationToken cancellationToken = default)
     {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-        try
-        {
-            dbContext.ScheduleJob.Remove(job);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+        // 失敗したDeleted状態をDbContextへ残さず、削除済みの場合も冪等に扱う。
+        await dbContext.ScheduleJob.Where(x => x.Id == job.Id).ExecuteDeleteAsync(cancellationToken);
+        var tracked = dbContext.ChangeTracker.Entries<ScheduleJob>().FirstOrDefault(x => x.Entity.Id == job.Id);
+        if (tracked != null) tracked.State = EntityState.Detached;
+        foreach (var relation in dbContext.ChangeTracker.Entries<ScheduleJobKeywordReserveRelation>()
+                     .Where(x => x.Entity.ScheduleJobId == job.Id).ToList())
+            relation.State = EntityState.Detached;
     }
 
     /// <summary>

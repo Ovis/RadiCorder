@@ -1,3 +1,5 @@
+using RadiCorder.Logics.Providers.Radiko;
+using RadiCorder.Logics.Providers.Radiru;
 using RadiCorder.Logics.Services.Streaming;
 using System.Net;
 using RadiCorder.Logics.ApiClients;
@@ -133,6 +135,10 @@ public static class LogicServiceCollectionExtensions
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
         services.AddScoped<StationLobLogic>();
         services.AddScoped<ProgramScheduleLobLogic>();
+        services.AddScoped<IProgramSearchProvider, RadikoProgramSearchProvider>();
+        services.AddScoped<IProgramSearchProvider, RadiruProgramSearchProvider>();
+        services.AddScoped<IProgramLookupProvider, RadikoProgramLookupProvider>();
+        services.AddScoped<IProgramLookupProvider, RadiruProgramLookupProvider>();
         services.AddScoped<ProgramSearchService>();
         services.AddScoped<ProgramUpdateRunner>();
         services.AddScoped<RecordedProgramQueryService>();

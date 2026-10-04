@@ -1,3 +1,5 @@
+using RadiCorder.Logics.Providers.Radiko;
+using RadiCorder.Logics.Providers.Radiru;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Context;
 using RadiCorder.Logics.Extensions;
@@ -20,24 +22,24 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
         IProgramScheduleRepository programScheduleRepository,
         RecordJobLobLogic recordJobLobLogic,
         IEntryMapper entryMapper,
-        NotificationLobLogic? notificationLobLogic = null)
+        NotificationLobLogic? notificationLobLogic = null,
+        IEnumerable<IProgramLookupProvider>? lookupProviders = null)
     {
+        private readonly IReadOnlyDictionary<RadioServiceKind, IProgramLookupProvider> _lookupProviders =
+            (lookupProviders ?? [new RadikoProgramLookupProvider(programScheduleRepository, entryMapper),
+                new RadiruProgramLookupProvider(programScheduleRepository, entryMapper)]).ToDictionary(x => x.ServiceKind);
+
         /// <summary>
         /// 指定されたIDの番組情報を取得
         /// </summary>
         /// <param name="programId"></param>
         /// <param name="serviceKind"></param>
         /// <returns></returns>
+        public bool SupportsProgramLookup(RadioServiceKind serviceKind) => _lookupProviders.ContainsKey(serviceKind);
+
         public async ValueTask<RadioProgramEntry?> GetProgramAsync(string programId, RadioServiceKind serviceKind)
         {
-            RadioProgramEntry? program = serviceKind switch
-            {
-                RadioServiceKind.Radiko => await GetRadikoProgramAsync(programId),
-                RadioServiceKind.Radiru => await GetRadiruProgramAsync(programId),
-                _ => null
-            };
-
-            return program;
+            return _lookupProviders.TryGetValue(serviceKind, out var provider) ? await provider.GetAsync(programId) : null;
         }
 
         /// <summary>

@@ -124,35 +124,10 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public async ValueTask<(bool IsSuccess, Exception? Error)> SetRecordingJobByProgramIdAsync(string programId, RadioServiceKind serviceKind, RecordingType type)
         {
-            RadioProgramEntry? entry;
-            switch (serviceKind)
-            {
-                case RadioServiceKind.Radiko:
-                    {
-                        entry = await programScheduleLobLogic.GetRadikoProgramAsync(programId);
-
-                        if (entry == null)
-                        {
-                            return (false, new DomainException("指定された番組が番組表にありませんでした。"));
-                        }
-
-                        break;
-                    }
-                case RadioServiceKind.Radiru:
-                    {
-                        entry = await programScheduleLobLogic.GetRadiruProgramAsync(programId);
-
-                        if (entry == null)
-                        {
-                            return (false, new DomainException("指定された番組が番組表にありませんでした。"));
-                        }
-
-                        break;
-                    }
-                case RadioServiceKind.Other:
-                default:
-                    return (false, new DomainException("未対応のサービスです。"));
-            }
+            if (!programScheduleLobLogic.SupportsProgramLookup(serviceKind))
+                return (false, new DomainException("未対応のサービスです。"));
+            var entry = await programScheduleLobLogic.GetProgramAsync(programId, serviceKind);
+            if (entry == null) return (false, new DomainException("指定された番組が番組表にありませんでした。"));
 
             if (type == RecordingType.OnDemand)
             {

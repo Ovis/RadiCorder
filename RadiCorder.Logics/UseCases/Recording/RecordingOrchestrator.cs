@@ -30,7 +30,9 @@ public class RecordingOrchestrator(
         var execution = new RecordingExecutionContext(
             command, logger, storage, repository, recordingStateEventPublisher, appToastEventPublisher, cancellationToken);
 
-        var source = sources.FirstOrDefault(s => s.CanHandle(command.ServiceKind));
+        var candidates = sources.Where(s => s.CanHandle(command.ServiceKind)).Take(2).ToList();
+        if (candidates.Count > 1) throw new InvalidOperationException($"録音ソースが重複登録されています。service={command.ServiceKind}");
+        var source = candidates.SingleOrDefault();
         if (source == null)
         {
             const string errorMessage = "未対応のサービスです。";

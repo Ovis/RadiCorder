@@ -1,3 +1,6 @@
+using RadiCorder.Logics.Domain.ProgramSchedule;
+using RadiCorder.Logics.Providers.Radiko;
+using RadiCorder.Logics.Providers.Radiru;
 using RadiCorder.Logics.Mappers;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
@@ -19,63 +22,29 @@ public class ProgramSearchService(
     RadikoUniqueProcessLogic radikoUniqueProcessLogic,
     StationLobLogic stationLobLogic,
     ProgramScheduleLobLogic programScheduleLobLogic,
-    IEntryMapper entryMapper)
+    IEntryMapper entryMapper,
+    IEnumerable<IProgramSearchProvider>? providers = null)
 {
-    public async ValueTask<List<ProgramForApiEntry>> SearchAsync(ProgramSearchEntity entity)
+    private readonly IReadOnlyDictionary<RadioServiceKind, IProgramSearchProvider> _providers =
+        (providers ?? [new RadikoProgramSearchProvider(logger, config, radikoUniqueProcessLogic, stationLobLogic, programScheduleLobLogic, entryMapper),
+            new RadiruProgramSearchProvider(stationLobLogic, programScheduleLobLogic, entryMapper)])
+        .ToDictionary(x => x.ServiceKind);
+
+    public ValueTask<List<ProgramForApiEntry>> SearchAsync(ProgramSearchEntity entity)
+        => SearchAsync(new ProgramSearchRequest(entity, new Dictionary<RadioServiceKind, IReadOnlyList<string>>
+        {
+            [RadioServiceKind.Radiko] = entity.SelectedRadikoStationIds,
+            [RadioServiceKind.Radiru] = entity.SelectedRadiruStationIds
+        }));
+
+    public async ValueTask<List<ProgramForApiEntry>> SearchAsync(ProgramSearchRequest request)
     {
-        var radikoResults = new List<RadikoProgram>();
-        var radiruResults = new List<NhkRadiruProgram>();
-
-        if (entity.SelectedRadikoStationIds.Any())
+        var result = new List<ProgramForApiEntry>();
+        foreach (var provider in _providers.Values.OrderBy(x => (int)x.ServiceKind))
         {
-            if (!config.IsRadikoAreaFree)
-            {
-                var currentAreaStations = await GetCurrentAreaStationsAsync(logger, radikoUniqueProcessLogic, stationLobLogic);
-                var currentAreaStationSet = currentAreaStations.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                entity.SelectedRadikoStationIds = entity.SelectedRadikoStationIds
-                    .Where(id => currentAreaStationSet.Contains(id))
-                    .ToList();
-            }
-
-            if (entity.SelectedRadikoStationIds.Any())
-            {
-                radikoResults = await programScheduleLobLogic.SearchRadikoProgramAsync(entity);
-            }
+            if (request.Stations.TryGetValue(provider.ServiceKind, out var stations) && stations.Count > 0)
+                result.AddRange(await provider.SearchAsync(request.Filters, stations));
         }
-
-        if (entity.SelectedRadiruStationIds.Any())
-        {
-            var visibleRadiruStationIds = (await stationLobLogic.GetRadiruStationAsync())
-                .Select(x => $"{x.AreaId}:{x.StationId}")
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            entity.SelectedRadiruStationIds = entity.SelectedRadiruStationIds
-                .Where(id => visibleRadiruStationIds.Contains(id))
-                .ToList();
-
-            if (entity.SelectedRadiruStationIds.Any())
-            {
-                radiruResults = await programScheduleLobLogic.SearchRadiruProgramAsync(entity);
-            }
-        }
-
-        return ProgramSearchResultBuilder.Build(radikoResults, radiruResults, entity.OrderKind, entryMapper);
-    }
-
-    /// <summary>
-    /// 現在エリアのradiko放送局ID一覧を取得する。
-    /// </summary>
-    private static async ValueTask<List<string>> GetCurrentAreaStationsAsync(
-        ILogger<ProgramSearchService> logger,
-        RadikoUniqueProcessLogic radikoUniqueProcessLogic,
-        StationLobLogic stationLobLogic)
-    {
-        var (isSuccess, area) = await radikoUniqueProcessLogic.GetRadikoAreaAsync();
-        if (!isSuccess || string.IsNullOrWhiteSpace(area))
-        {
-            logger.ZLogWarning($"radikoエリア情報の取得に失敗");
-            return [];
-        }
-
-        return await stationLobLogic.GetCurrentAreaStations(area);
+        return ProgramSearchResultBuilder.Build(result, request.Filters.OrderKind);
     }
 }

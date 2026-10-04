@@ -91,7 +91,10 @@ namespace RadiCorder.Logics.Tests.LogicTest
                 programScheduleRepository,
                 _recordJobLobLogic,
                 _entryMapper,
-                _notificationLobLogicMock.Object
+                _notificationLobLogicMock.Object,
+                new RadiCorder.Logics.Domain.ProgramSchedule.IProgramLookupProvider[] {
+                    new RadiCorder.Logics.Providers.Radiko.RadikoProgramLookupProvider(programScheduleRepository, _entryMapper),
+                    new RadiCorder.Logics.Providers.Radiru.RadiruProgramLookupProvider(programScheduleRepository, _entryMapper) }
             );
 
             _reserveLobLogic = new ReserveLobLogic(

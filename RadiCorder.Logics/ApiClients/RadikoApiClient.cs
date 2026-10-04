@@ -169,6 +169,11 @@ public class RadikoApiClient(
             var xmlString = await response.Content.ReadAsStringAsync(cancellationToken);
             var doc = XDocument.Parse(xmlString);
 
+            if (!doc.Descendants("station").Any(x => x.Attribute("id")?.Value == stationId))
+            {
+                throw new DomainException("radiko番組表の対象局が見つかりません。APIの応答形式を確認してください。");
+            }
+
             var programList = new List<RadikoProgram>();
 
             // XMLデータをパースして番組リストを作成
@@ -177,7 +182,15 @@ public class RadikoApiClient(
                 var (program, usedFallback, fallbackFields, strictError) = ParseWeeklyProgram(programElement, stationId);
                 if (program != null)
                 {
+                    if (string.IsNullOrWhiteSpace(program.Title) || program.EndTime <= program.StartTime)
+                    {
+                        throw new DomainException("radiko番組表の必須項目が不正です。");
+                    }
                     programList.Add(program);
+                }
+                else
+                {
+                    throw new DomainException("radiko番組表を解析できないため更新を中止しました。", strictError);
                 }
 
                 if (usedFallback)
@@ -200,10 +213,14 @@ public class RadikoApiClient(
 
             return programList;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"radiko API呼び出し中に例外が発生: StationId={stationId}");
-            return new List<RadikoProgram>();
+            throw new DomainException("radiko番組表の取得に失敗しました。既存データを保持します。", ex);
         }
     }
 
@@ -424,5 +441,4 @@ public class RadikoApiClient(
         return builder.Uri.ToString();
     }
 }
-
 

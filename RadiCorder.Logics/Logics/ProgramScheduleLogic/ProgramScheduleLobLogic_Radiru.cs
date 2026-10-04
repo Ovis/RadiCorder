@@ -1,4 +1,5 @@
 using RadiCorder.Logics.Extensions;
+using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Models.NhkRadiru;
@@ -123,7 +124,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
                     {
                         logger.ZLogWarning(
                             $"らじる★らじる番組を必須項目不足でスキップ areaId={areaId} stationId={serviceId} programId={programJsonEntity.Id}");
-                        continue;
+                        throw new DomainException("らじる★らじる番組表の必須項目が不足しています。既存データを保持します。");
                     }
 
                     entries.Add(entry);

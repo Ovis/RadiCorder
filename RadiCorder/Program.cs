@@ -111,6 +111,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.UseMiddleware<RequestLoggingScopeMiddleware>();
 

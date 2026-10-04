@@ -63,6 +63,7 @@ internal sealed class WebTestHost : IAsyncDisposable
         {
             await scope.ServiceProvider.GetRequiredService<RadioDbContext>().Database.MigrateAsync();
         }
+        App.UseAntiforgery();
         App.MapRadiCorderEndpoints();
         App.MapOpenApi();
         await App.StartAsync();

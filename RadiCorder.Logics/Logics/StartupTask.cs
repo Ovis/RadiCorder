@@ -41,7 +41,15 @@ namespace RadiCorder.Logics.Logics
 
                 // radikoログイン処理 
                 {
-                    await radikoLogic.LoginRadikoAsync();
+                    try
+                    {
+                        await radikoLogic.LoginRadikoAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.ZLogWarning(ex, $"radikoログインに失敗しました。他の機能の起動を継続します。");
+                        await notificationLobLogic.SetNotificationAsync(LogLevel.Warning, NoticeCategory.SystemError, "radikoログインに失敗しました。接続回復後に再試行します。");
+                    }
                 }
 
                 // 放送局情報の初期化
@@ -80,7 +88,15 @@ namespace RadiCorder.Logics.Logics
                         if (!await stationLobLogic.CheckInitializedRadiruRadiruStationAsync())
                         {
                             // らじる★らじるの放送局情報を初期化
-                            await stationLobLogic.UpdateRadiruStationInformationAsync();
+                            try
+                            {
+                                await stationLobLogic.UpdateRadiruStationInformationAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.ZLogWarning(ex, $"らじる★らじる初期取得に失敗しました。他の機能の起動を継続します。");
+                                await notificationLobLogic.SetNotificationAsync(LogLevel.Warning, NoticeCategory.SystemError, "らじる★らじる初期取得に失敗しました。接続回復後に再試行します。");
+                            }
                         }
                     }
                 }

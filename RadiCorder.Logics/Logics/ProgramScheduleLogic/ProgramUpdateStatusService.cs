@@ -66,13 +66,16 @@ public class ProgramUpdateStatusService : IProgramUpdateStatusService
     /// 更新失敗状態を記録する。
     /// </summary>
     public ProgramUpdateStatusSnapshot MarkFailed()
+        => MarkFailed("番組表更新に失敗しました。");
+
+    public ProgramUpdateStatusSnapshot MarkFailed(string message)
     {
         lock (sync)
         {
             snapshot = snapshot with
             {
                 IsRunning = false,
-                Message = "番組表更新に失敗しました。",
+                Message = message,
                 LastCompletedAtUtc = DateTimeOffset.UtcNow,
                 LastSucceeded = false
             };

@@ -173,6 +173,21 @@ namespace RadiCorder.Logics.Logics.StationLogic
         /// </summary>
         public async ValueTask<bool> TryUpdateRadiruStationInformationIfDueAsync(CancellationToken cancellationToken = default)
         {
+            try
+            {
+                return await UpdateRadiruStationInformationIfDueAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception e)
+            {
+                logger.ZLogWarning(e, $"らじる★らじるの放送局定義更新に失敗しました。既存データで継続します。");
+                return false;
+            }
+        }
+
+        public async ValueTask<bool> UpdateRadiruStationInformationIfDueAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             var lastCheckedAt = await config.GetRadiruStationDefinitionLastCheckedAtAsync();
             var todayJst = DateOnly.FromDateTime(appContext.StandardDateTimeOffset.ToJapanDateTime());
 
@@ -185,18 +200,11 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 }
             }
 
-            try
-            {
-                await UpdateRadiruStationInformationAsync();
-                await config.UpdateRadiruStationDefinitionLastCheckedAtAsync(appContext.StandardDateTimeOffset.ToUniversalTime());
-                return true;
-            }
-            catch (Exception e)
-            {
-                logger.ZLogWarning(e, $"らじる★らじるの放送局定義更新に失敗しました。既存データで継続します。");
-                return false;
-            }
+            await UpdateRadiruStationInformationAsync();
+            await config.UpdateRadiruStationDefinitionLastCheckedAtAsync(appContext.StandardDateTimeOffset.ToUniversalTime());
+            return true;
         }
+
 
         /// <summary>
         /// 指定エリアとサービスIDかららじる★らじるのHLS URLを取得

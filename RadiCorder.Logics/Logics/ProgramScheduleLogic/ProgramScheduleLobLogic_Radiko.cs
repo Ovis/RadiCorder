@@ -1,4 +1,5 @@
 using RadiCorder.Logics.Extensions;
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.RdbContext;
 using ZLogger;
@@ -54,16 +55,22 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         public async ValueTask UpdateLatestRadikoProgramDataAsync()
+            => (await SynchronizeRadikoProgramsAsync(default)).ThrowIfFailed();
+
+        public async ValueTask<ProgramSyncReport> SynchronizeRadikoProgramsAsync(CancellationToken cancellationToken)
         {
+            var report = new ProgramSyncReport();
             try
             {
-                var stationIdList = await programScheduleRepository.GetRadikoStationIdsAsync();
+                var stationIdList = await programScheduleRepository.GetRadikoStationIdsAsync(cancellationToken);
 
                 foreach (var stationId in stationIdList)
                 {
-                    var programList = await radikoApiClient.GetWeeklyProgramsAsync(stationId);
-
-                    await programScheduleRepository.AddRadikoProgramsIfMissingAsync(programList);
+                    await report.RunAsync(stationId, async () =>
+                    {
+                        var programList = await radikoApiClient.GetWeeklyProgramsAsync(stationId, cancellationToken);
+                        await programScheduleRepository.AddRadikoProgramsIfMissingAsync(programList, cancellationToken);
+                    }, cancellationToken);
                 }
             }
             catch (Exception e)
@@ -71,6 +78,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
                 logger.ZLogError(e, $"radikoの番組表情報更新処理で例外発生");
                 throw;
             }
+            return report;
         }
 
         /// <summary>

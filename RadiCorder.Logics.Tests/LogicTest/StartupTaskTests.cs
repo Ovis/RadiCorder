@@ -191,9 +191,11 @@ public class StartupTaskTests
         bool ffmpegOk,
         bool hasRadikoStations = true,
         bool hasRadiruStations = true,
-        bool failRadikoStationSync = false)
+        bool failRadikoStationSync = false,
+        bool failRadikoLogin = false)
     {
         var configMock = CreateConfig();
+        if (failRadikoLogin) configMock.Setup(x => x.TryGetRadikoCredentialsAsync()).Throws(new IOException("接続失敗"));
 
         var ffmpegMock = new Mock<IFfmpegService>();
         ffmpegMock.Setup(x => x.Initialize()).Returns(ffmpegOk);
@@ -307,6 +309,14 @@ public class StartupTaskTests
         return (task, notificationRepo);
     }
 
+    [Test]
+    public async Task InitializeAsync_radikoログイン障害でも本体の起動を継続する()
+    {
+        var (task, repo) = CreateTarget(ffmpegOk: true, failRadikoLogin: true);
+        await task.InitializeAsync();
+        Assert.That((await repo.GetUnreadListAsync()).Any(x => x.Message.Contains("radikoログインに失敗")), Is.True);
+    }
+
     private sealed class ThrowingRadikoApiClient : IRadikoApiClient
     {
         public Task<List<RadikoStation>> GetRadikoStationsAsync(CancellationToken cancellationToken = default)
@@ -358,4 +368,3 @@ public class StartupTaskTests
     }
 
 }
-

@@ -1,5 +1,6 @@
 using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Errors;
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Models.NhkRadiru;
@@ -54,7 +55,11 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
 
         public async ValueTask UpdateRadiruProgramDataAsync()
+            => (await SynchronizeRadiruProgramsAsync(default)).ThrowIfFailed();
+
+        public async ValueTask<ProgramSyncReport> SynchronizeRadiruProgramsAsync(CancellationToken cancellationToken)
         {
+            var report = new ProgramSyncReport();
             var dateList = Enumerable.Range(-6, 15)
                 .Select(i => appContext.StandardDateTimeOffset.AddDays(-i))
                 .ToList();
@@ -64,7 +69,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             {
                 foreach (var dateTimeOffset in dateList)
                 {
-                    var areaServices = await radiruApiClient.GetAvailableAreaServicesAsync(dateTimeOffset);
+                    var areaServices = await radiruApiClient.GetAvailableAreaServicesAsync(dateTimeOffset, cancellationToken);
                     if (areaServices.Count == 0)
                     {
                         continue;
@@ -74,7 +79,10 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
                     foreach (var (areaId, serviceId) in areaServices.Distinct())
                     {
-                        await UpsertDailyProgramDataAsync(areaId, serviceId, dateTimeOffset);
+                        await report.RunAsync($"{areaId}:{serviceId}:{dateTimeOffset:yyyy-MM-dd}", async () =>
+                        {
+                            await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dateTimeOffset, cancellationToken);
+                        }, cancellationToken);
                     }
                 }
             }
@@ -88,6 +96,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             {
                 logger.ZLogWarning($"らじる★らじるの取得対象サービスが存在しないため番組表更新をスキップしました。");
             }
+            return report;
         }
 
 
@@ -106,8 +115,11 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
 
         private async ValueTask<bool> UpsertDailyProgramDataAsync(string areaId, string serviceId, DateTimeOffset dt)
+            => await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dt, default);
+
+        private async ValueTask<bool> UpsertDailyProgramDataCoreAsync(string areaId, string serviceId, DateTimeOffset dt, CancellationToken cancellationToken)
         {
-            var programList = await radiruApiClient.GetDailyProgramsAsync(areaId, serviceId, dt);
+            var programList = await radiruApiClient.GetDailyProgramsAsync(areaId, serviceId, dt, cancellationToken);
 
             if (!programList.Any())
             {
@@ -136,7 +148,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
                     return false;
                 }
 
-                await programScheduleRepository.UpsertRadiruProgramsAsync(entries);
+                await programScheduleRepository.UpsertRadiruProgramsAsync(entries, cancellationToken);
             }
             catch (Exception e)
             {

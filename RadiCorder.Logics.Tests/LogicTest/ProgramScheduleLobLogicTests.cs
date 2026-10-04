@@ -501,7 +501,7 @@ public class ProgramScheduleLobLogicTests
             recordJobLobLogic,
             new EntryMapper(new Mock<IAppConfigurationService>().Object));
 
-        Assert.ThrowsAsync<Exception>(async () =>
+        Assert.ThrowsAsync<DomainException>(async () =>
             await logic.UpdateRadiruProgramDataAsync());
     }
 

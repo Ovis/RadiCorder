@@ -89,6 +89,44 @@ namespace RadiCorder.Logics.Tests.LogicTest
         }
 
         [Test]
+        public async Task UpdateRadiruStationInformationAsync_日次番組表だけでも同期し任意URLは保存済み値を保持する()
+        {
+            _dbContext.NhkRadiruAreas.Add(new NhkRadiruArea { AreaId = "130", ProgramNowOnAirApiUrl = "https://example/old-noa", ProgramDetailApiUrlTemplate = "https://example/old-detail", DailyProgramApiUrlTemplate = "https://example/old-day" });
+            await _dbContext.SaveChangesAsync();
+            var handler = new FakeHttpMessageHandler();
+            handler.AddHandler(_ => true, _ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("<config><url_program_day>https://example/new-day/{area}</url_program_day><stream_url><data><areakey>130</areakey><r1hls>https://example/new.m3u8</r1hls></data></stream_url></config>")
+            });
+            _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(new HttpClient(handler));
+            Assert.That(await _stationLogic.UpdateRadiruStationInformationAsync(), Is.True);
+            var area = await _dbContext.NhkRadiruAreas.AsNoTracking().SingleAsync();
+            Assert.That(area.DailyProgramApiUrlTemplate, Is.EqualTo("https://example/new-day/130"));
+            Assert.That(area.ProgramNowOnAirApiUrl, Is.EqualTo("https://example/old-noa"));
+            Assert.That(area.ProgramDetailApiUrlTemplate, Is.EqualTo("https://example/old-detail"));
+        }
+
+        [TestCase("")]
+        [TestCase("javascript:alert(1)")]
+        [TestCase("/relative/day")]
+        public async Task UpdateRadiruStationInformationAsync_番組表URLの欠落や不正時は定義と確認日を保持する(string dailyUrl)
+        {
+            _dbContext.NhkRadiruAreas.Add(new NhkRadiruArea { AreaId = "130", DailyProgramApiUrlTemplate = "https://example/old-day" });
+            _dbContext.NhkRadiruAreaServices.Add(new NhkRadiruAreaService { AreaId = "130", ServiceId = "r1", IsActive = true, HlsUrl = "https://example/old.m3u8" });
+            await _dbContext.SaveChangesAsync();
+            var handler = new FakeHttpMessageHandler();
+            handler.AddHandler(_ => true, _ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent($"<config><url_program_noa>https://example/noa</url_program_noa><url_program_detail>https://example/detail</url_program_detail><url_program_day>{dailyUrl}</url_program_day><stream_url><data><areakey>130</areakey><r1hls>https://example/new.m3u8</r1hls></data></stream_url></config>")
+            });
+            _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(new HttpClient(handler));
+            Assert.ThrowsAsync<DomainException>(async () => await _stationLogic.UpdateRadiruStationInformationIfDueAsync());
+            Assert.That((await _dbContext.NhkRadiruAreas.AsNoTracking().SingleAsync()).DailyProgramApiUrlTemplate, Is.EqualTo("https://example/old-day"));
+            Assert.That((await _dbContext.NhkRadiruAreaServices.AsNoTracking().SingleAsync()).HlsUrl, Is.EqualTo("https://example/old.m3u8"));
+            _configServiceMock.Verify(x => x.UpdateRadiruStationDefinitionLastCheckedAtAsync(It.IsAny<DateTimeOffset>()), Times.Never);
+        }
+
+        [Test]
         public void UpsertRadikoStationDefinitionAsync_一部の局ID欠落でも置換を中止する()
         {
             _radikoApiClientMock.Setup(x => x.GetRadikoStationsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<RadikoStation> { new() { StationId = "TBS" }, new() { StationId = "" } });

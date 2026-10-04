@@ -1,4 +1,6 @@
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
+using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Application;
 using RadiCorder.Logics.Extensions;
 using RadiCorder.Logics.Models.NhkRadiru;
@@ -81,6 +83,9 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 var programNowOnAirUrlTemplate = GetDescendantValue(doc, "url_program_noa");
                 var programDetailApiUrlTemplate = GetDescendantValue(doc, "url_program_detail");
                 var dailyProgramApiUrlTemplate = GetDescendantValue(doc, "url_program_day");
+                if (!string.IsNullOrWhiteSpace(programNowOnAirUrlTemplate)) ValidateRadiruUrl(programNowOnAirUrlTemplate, "url_program_noa");
+                if (!string.IsNullOrWhiteSpace(programDetailApiUrlTemplate)) ValidateRadiruUrl(programDetailApiUrlTemplate, "url_program_detail");
+                ValidateRadiruUrl(dailyProgramApiUrlTemplate, "url_program_day");
                 var syncedAtUtc = DateTimeOffset.UtcNow;
 
                 areaDefinitions = [];
@@ -112,11 +117,12 @@ namespace RadiCorder.Logics.Logics.StationLogic
 
                         var serviceId = ConvertHlsTagNameToServiceId(tagName);
                         var hlsUrl = (element.Value ?? string.Empty).Trim().ToHttpsUrl();
-                        if (string.IsNullOrWhiteSpace(serviceId) || string.IsNullOrWhiteSpace(hlsUrl))
+                        if (string.IsNullOrWhiteSpace(serviceId))
                         {
                             continue;
                         }
 
+                        ValidateRadiruUrl(hlsUrl, tagName);
                         serviceMap[serviceId] = hlsUrl;
 
                         serviceDefinitions.Add(new NhkRadiruAreaService
@@ -288,6 +294,14 @@ namespace RadiCorder.Logics.Logics.StationLogic
         {
             var station = RadiruStationKind.FindByServiceId(stationId);
             return station?.CanFetchProgramsForDateAt(nowJst, targetDateJst) ?? true;
+        }
+
+        private static void ValidateRadiruUrl(string value, string fieldName)
+        {
+            var example = Regex.Replace(value.ToHttpsUrl(), @"\{[^{}]+\}", "fixture");
+            if (!Uri.TryCreate(example, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
+                uri.Port != 443 || !string.IsNullOrEmpty(uri.UserInfo))
+                throw new DomainException($"らじるの設定XMLで{fieldName}が欠落または不正です。既存DBを保持します。");
         }
 
         private static string GetDescendantValue(XContainer element, string descendantName)

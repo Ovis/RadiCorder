@@ -85,6 +85,84 @@ namespace RadiCorder.Logics.Tests.LogicTest
             Assert.That(result.Key, Is.EqualTo(string.Empty));
         }
 
+        [TestCase(HttpStatusCode.OK, "JP13,0,0\n", true)]
+        [TestCase(HttpStatusCode.OK, "OUT", false)]
+        [TestCase(HttpStatusCode.Forbidden, "", false)]
+        public async Task AuthorizeRadikoAsync_ログイン情報なしでも再生認証を行う(HttpStatusCode status, string body, bool expectedSuccess)
+        {
+            var loginCount = 0;
+            var auth1Count = 0;
+            var auth2Count = 0;
+            _configMock.Setup(c => c.TryGetRadikoCredentialsAsync())
+                .Returns(ValueTask.FromResult((false, string.Empty, string.Empty)));
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/login"), _ =>
+            {
+                loginCount++;
+                return new HttpResponseMessage(HttpStatusCode.Forbidden);
+            });
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/auth1"), _ =>
+            {
+                auth1Count++;
+                var response = new HttpResponseMessage(HttpStatusCode.OK);
+                response.Headers.Add("X-Radiko-AuthToken", "anonymous-token");
+                response.Headers.Add("X-Radiko-KeyLength", "5");
+                response.Headers.Add("X-Radiko-KeyOffset", "0");
+                return response;
+            });
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("playerCommon.js"), _ =>
+                new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("new RadikoJSPlayer('a','b','abcde',{")
+                });
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/auth2"), req =>
+            {
+                auth2Count++;
+                Assert.That(System.Web.HttpUtility.ParseQueryString(req.RequestUri!.Query)["radiko_session"], Is.EqualTo(string.Empty));
+                Assert.That(req.Headers.GetValues("X-Radiko-AuthToken").Single(), Is.EqualTo("anonymous-token"));
+                return new HttpResponseMessage(status) { Content = new StringContent(body) };
+            });
+
+            var first = await _radikoLogic.AuthorizeRadikoAsync();
+            var second = await _radikoLogic.AuthorizeRadikoAsync();
+            var refreshed = await _radikoLogic.AuthorizeRadikoAsync(forceRefresh: true);
+
+            Assert.That(first.IsSuccess, Is.EqualTo(expectedSuccess));
+            Assert.That(second.IsSuccess, Is.EqualTo(expectedSuccess));
+            Assert.That(refreshed.IsSuccess, Is.EqualTo(expectedSuccess));
+            Assert.That(first.Token, Is.EqualTo(expectedSuccess ? "anonymous-token" : string.Empty));
+            Assert.That(first.AreaId, Is.EqualTo(expectedSuccess ? "JP13" : string.Empty));
+            Assert.That(loginCount, Is.Zero);
+            Assert.That(auth1Count, Is.EqualTo(expectedSuccess ? 2 : 3));
+            Assert.That(auth2Count, Is.EqualTo(expectedSuccess ? 2 : 3));
+            _configMock.Verify(c => c.UpdateRadikoPremiumUser(true), Times.Never);
+            _configMock.Verify(c => c.UpdateRadikoAreaFree(true), Times.Never);
+        }
+
+        [Test]
+        public async Task AuthorizeRadikoAsync_設定済みアカウントのログイン失敗時は無料認証へ切り替えない()
+        {
+            var loginCount = 0;
+            var authCount = 0;
+            _configMock.Setup(c => c.TryGetRadikoCredentialsAsync())
+                .Returns(ValueTask.FromResult((true, "user", "invalid-password")));
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/login"), _ =>
+            {
+                loginCount++;
+                return new HttpResponseMessage(HttpStatusCode.Forbidden);
+            });
+            _httpHandler.AddHandler(_ => true, _ =>
+            {
+                authCount++;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            var result = await _radikoLogic.AuthorizeRadikoAsync();
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(loginCount, Is.EqualTo(1));
+            Assert.That(authCount, Is.Zero);
+        }
+
         [Test]
         public async Task AuthorizeRadikoAsync_ヘッダー不足_失敗()
         {
@@ -361,4 +439,3 @@ namespace RadiCorder.Logics.Tests.LogicTest
         }
     }
 }
-

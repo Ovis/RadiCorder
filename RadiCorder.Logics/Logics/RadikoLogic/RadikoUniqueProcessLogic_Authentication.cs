@@ -159,30 +159,32 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                             var (hasCredentials, userId, password) = await config.TryGetRadikoCredentialsAsync();
                             if (!hasCredentials)
                             {
+                                // アカウント未設定でも、地域内の無料再生に必要な認証は継続する。
                                 config.UpdateRadikoPremiumUser(false);
                                 config.UpdateRadikoAreaFree(false);
-                                return (false, string.Empty, string.Empty, null);
                             }
-
-                            var loginResult = await TryLoginWithCredentialsAsync(userId, password, cancellationToken);
-                            if (!loginResult.IsSuccess)
+                            else
                             {
-                                _cachedSession = null;
-                                _cachedAuthorization = null;
-                                config.UpdateRadikoPremiumUser(false);
-                                config.UpdateRadikoAreaFree(false);
-                                return (false, string.Empty, string.Empty, null);
-                            }
+                                var loginResult = await TryLoginWithCredentialsAsync(userId, password, cancellationToken);
+                                if (!loginResult.IsSuccess)
+                                {
+                                    _cachedSession = null;
+                                    _cachedAuthorization = null;
+                                    config.UpdateRadikoPremiumUser(false);
+                                    config.UpdateRadikoAreaFree(false);
+                                    return (false, string.Empty, string.Empty, null);
+                                }
 
-                            session = loginResult.Session;
-                            _cachedSession = new CachedRadikoSession(
-                                _authenticationCacheScopeId,
-                                loginResult.Session,
-                                loginResult.IsPremiumUser,
-                                loginResult.IsAreaFree,
-                                nowUtc.Add(RadikoSessionCacheTtl));
-                            config.UpdateRadikoPremiumUser(loginResult.IsPremiumUser);
-                            config.UpdateRadikoAreaFree(loginResult.IsAreaFree);
+                                session = loginResult.Session;
+                                _cachedSession = new CachedRadikoSession(
+                                    _authenticationCacheScopeId,
+                                    loginResult.Session,
+                                    loginResult.IsPremiumUser,
+                                    loginResult.IsAreaFree,
+                                    nowUtc.Add(RadikoSessionCacheTtl));
+                                config.UpdateRadikoPremiumUser(loginResult.IsPremiumUser);
+                                config.UpdateRadikoAreaFree(loginResult.IsAreaFree);
+                            }
                         }
                     }
 

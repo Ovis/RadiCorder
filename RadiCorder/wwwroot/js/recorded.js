@@ -5,6 +5,7 @@ import { setTextContent, setEventListener, formatDisplayDateTime } from './utils
 import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
 import { configurePlayer, finishPlayer, playPlayerSource, stopPlayer } from './player-controller.js';
+import { registerPage } from './page-navigation.js';
 import { clearMultiSelect, renderSelectedTagChips, enableTouchLikeMultiSelect } from './tag-select-ui.js';
 const sortingElements = {
     'sort-title': 'Title',
@@ -27,38 +28,10 @@ const selectedRecordingIds = new Set();
 let lastLoadedRecordings = [];
 const continuousPlaybackStorageKey = 'radicorder-recorded-continuous-playback';
 let currentPlayingRecordingId = null;
-let currentPlayingTitle = null;
-const defaultDocumentTitle = document.title;
 let recordingHubConnection = null;
 let isRealtimeReloadRunning = false;
 let hasRealtimeReloadPending = false;
-configurePlayer({
-    createControls: createPlayerJumpControls,
-    onEnded: () => { void handlePlaybackEnded(); },
-    onStateChanged: (state) => {
-        currentPlayingRecordingId = state?.recordId ?? null;
-        currentPlayingTitle = state?.title ?? null;
-        updateDocumentTitleByRecordingId(currentPlayingRecordingId);
-        syncRecordedListPlaybackButtons();
-    }
-});
-function updateDocumentTitleByRecordingId(recordId) {
-    if (currentPlayingTitle && currentPlayingTitle.trim().length > 0) {
-        document.title = `${currentPlayingTitle.trim()} - RadiCorder`;
-        return;
-    }
-    if (!recordId) {
-        document.title = defaultDocumentTitle;
-        return;
-    }
-    const target = lastLoadedRecordings.find((x) => x.id === recordId);
-    const title = target?.title?.trim();
-    if (!title) {
-        document.title = defaultDocumentTitle;
-        return;
-    }
-    document.title = `${title} - RadiCorder`;
-}
+let activePageSignal = null;
 function isCurrentRecordingPlaying(recordId) {
     return currentPlayingRecordingId === recordId;
 }
@@ -166,7 +139,29 @@ async function initializeRecordingHubConnectionAsync() {
 let tagsModalElement = null;
 let tagsModalTitleElement = null;
 let tagsModalListElement = null;
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('recorded.js', async (signal) => {
+    activePageSignal = signal;
+    currentPage = 1;
+    currentPageSize = defaultPageSize;
+    sortBy = 'StartDateTime';
+    isDescending = true;
+    searchQuery = '';
+    withinDays = null;
+    stationIdFilter = '';
+    selectedTagIds = [];
+    tagMode = 'or';
+    untaggedOnly = false;
+    unlistenedOnly = false;
+    selectedRecordingIds.clear();
+    lastLoadedRecordings = [];
+    configurePlayer({
+        createControls: createPlayerJumpControls,
+        onEnded: () => { void handlePlaybackEnded(); },
+        onStateChanged: (state) => {
+            currentPlayingRecordingId = state?.recordId ?? null;
+            syncRecordedListPlaybackButtons();
+        }
+    });
     const verificationToken = document.getElementById('VerificationToken')?.value ?? '';
     const searchBtn = document.getElementById('search-button');
     const pageSizeSelect = document.getElementById('page-size-select');
@@ -529,24 +524,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     await loadStationFilters();
+    if (signal.aborted) {
+        return;
+    }
     await loadTags();
+    if (signal.aborted) {
+        return;
+    }
     renderSelectedTagChips(tagFilterSelect, tagFilterChipsContainer, recordedTagChipOptions);
     renderSelectedTagChips(tagBulkSelect, tagBulkChipsContainer, recordedTagChipOptions);
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (recordingHubConnection) {
             void recordingHubConnection.stop();
             recordingHubConnection = null;
         }
-    });
+    };
     await loadRecordings(currentPage, sortBy, isDescending, searchQuery);
+    if (signal.aborted) {
+        return;
+    }
     await initializeRecordingHubConnectionAsync();
-    window.addEventListener('resize', () => {
+    const onResize = () => {
         const currentMobileView = isMobileView();
         if (currentMobileView !== previousMobileView) {
             previousMobileView = currentMobileView;
             renderRecordings(lastLoadedRecordings);
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('resize', onResize);
+    if (signal.aborted) {
+        cleanup();
+    }
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        window.removeEventListener('resize', onResize);
+        cleanup();
+    };
 });
 /**
  * 録音番組一覧取得
@@ -556,6 +570,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @param searchQuery
  */
 async function loadRecordings(page, sortBy, isDescending, searchQuery) {
+    const signal = activePageSignal;
     // テーブルヘッダーのソート項目のアイコンを調整
     Object.entries(sortingElements).forEach(([elementId, sortKey]) => {
         const element = document.getElementById(elementId);
@@ -590,6 +605,9 @@ async function loadRecordings(page, sortBy, isDescending, searchQuery) {
     }
     const response = await fetch(`${API_ENDPOINTS.PROGRAM_RECORDED}?${queryString.toString()}`);
     const result = await response.json();
+    if (signal?.aborted) {
+        return;
+    }
     const data = result.data;
     lastLoadedRecordings = data.recordings;
     renderRecordings(data.recordings);

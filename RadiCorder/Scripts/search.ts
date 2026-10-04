@@ -20,12 +20,12 @@ import { clearMultiSelect, renderSelectedTagChips, enableTouchLikeMultiSelect } 
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
 import { setOverlayLoading } from './loading.js';
 import { configurePlayer, playPlayerSource } from './player-controller.js';
+import { registerPage } from './page-navigation.js';
 
 const reservedRecordingKeys = new Set<string>();
 let availableTags: Tag[] = [];
 const normalizeTagName = (value: string): string => value.trim().toLocaleLowerCase();
 const showSearchToast = createInlineToast('search-result-toast', 'search-result-toast-message');
-configurePlayer({ onError: (message) => showSearchToast(message, false) });
 
 function createTemplateTokenHelp(sectionLabel: string, targetInputId: string): HTMLElement {
     const wrapper = document.createElement('div');
@@ -179,18 +179,31 @@ async function playProgramWithToast(program: Program): Promise<void> {
     }
 }
 
-document.querySelectorAll('.modal-closeProcess').forEach(elm => {
-    elm.addEventListener('click', closeModal);
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('search.js', async (signal) => {
+    reservedRecordingKeys.clear();
+    configurePlayer({ onError: (message) => showSearchToast(message, false) });
+    document.querySelectorAll('.modal-closeProcess').forEach(elm => {
+        elm.addEventListener('click', closeModal);
+    });
+    bindSearchButtons();
     const radikoStationGroupsElm = document.getElementById('radikoStationGroups') as HTMLDivElement;
     const radiruStationGroupsElm = document.getElementById('radiruStationGroups') as HTMLDivElement;
     wireInlineToastClose('search-result-toast-close', 'search-result-toast');
 
-    radikoStationGroupsElm.appendChild(await generateStationList(RadioServiceKind.Radiko));
-    radiruStationGroupsElm.appendChild(await generateStationList(RadioServiceKind.Radiru));
+    const radikoStations = await generateStationList(RadioServiceKind.Radiko);
+    if (signal.aborted) {
+        return;
+    }
+    radikoStationGroupsElm.appendChild(radikoStations);
+    const radiruStations = await generateStationList(RadioServiceKind.Radiru);
+    if (signal.aborted) {
+        return;
+    }
+    radiruStationGroupsElm.appendChild(radiruStations);
     availableTags = await loadTags();
+    if (signal.aborted) {
+        return;
+    }
     renderOptionCard();
 });
 
@@ -578,8 +591,13 @@ function renderOptionCard(): void {
 }
 
 
-document.getElementById('searchButton')!.addEventListener('click', async function () {
-    const searchButton = this as HTMLButtonElement;
+function bindSearchButtons(): void {
+    document.getElementById('searchButton')!.addEventListener('click', onSearchClick);
+    document.getElementById('recordingButton')!.addEventListener('click', onRecordingClick);
+}
+
+async function onSearchClick(this: HTMLButtonElement): Promise<void> {
+    const searchButton = this;
     const searchLoadingOverlay = document.getElementById('searchLoadingOverlay') as HTMLElement | null;
     const selectedRadikoStationIds = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="SelectedRadikoStationIds"]:checked')).map(checkbox => checkbox.value);
     const selectedRadiruStationIds = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="SelectedRadiruStationIds"]:checked')).map(checkbox => checkbox.value);
@@ -813,11 +831,11 @@ document.getElementById('searchButton')!.addEventListener('click', async functio
             setOverlayLoading(searchLoadingOverlay, false);
         }
     }
-});
+}
 
 
 // 自動予約ルール追加ボタン
-document.getElementById('recordingButton')!.addEventListener('click', async function () {
+async function onRecordingClick(): Promise<void> {
     const selectedRadikoStationIds = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="SelectedRadikoStationIds"]:checked')).map(checkbox => checkbox.value);
     const selectedRadiruStationIds = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="SelectedRadiruStationIds"]:checked')).map(checkbox => checkbox.value);
     const keyword = (document.getElementById('Keyword') as HTMLInputElement).value;
@@ -884,6 +902,6 @@ document.getElementById('recordingButton')!.addEventListener('click', async func
     } catch (e) {
         showSearchToast("録音予約に失敗しました。", false);
     }
-});
+}
 
 

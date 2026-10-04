@@ -7,6 +7,7 @@ import { API_ENDPOINTS } from './const.js';
 import { showGlobalToast } from './feedback.js';
 import { sanitizeHtml } from './utils.js';
 import type { SignalRHubConnection, SignalRWindow } from './signalr-types.js';
+import { startPageNavigation } from './page-navigation.js';
 
 type GlobalToastEventPayload = {
     message: string;
@@ -22,6 +23,7 @@ type GlobalOperationEventPayload = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+    startPageNavigation();
 
     const notificationButton = document.getElementById('notification-button') as HTMLButtonElement;
     const notificationPopup = document.getElementById('notification-popup') as HTMLElement;

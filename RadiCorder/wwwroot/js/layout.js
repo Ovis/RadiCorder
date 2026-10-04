@@ -1,7 +1,9 @@
 import { API_ENDPOINTS } from './const.js';
 import { showGlobalToast } from './feedback.js';
 import { sanitizeHtml } from './utils.js';
+import { startPageNavigation } from './page-navigation.js';
 document.addEventListener('DOMContentLoaded', async () => {
+    startPageNavigation();
     const notificationButton = document.getElementById('notification-button');
     const notificationPopup = document.getElementById('notification-popup');
     let notificationHubConnection = null;

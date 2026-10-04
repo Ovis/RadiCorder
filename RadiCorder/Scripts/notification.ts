@@ -6,6 +6,7 @@ import {
 import { API_ENDPOINTS } from './const.js';
 import { showGlobalToast } from './feedback.js';
 import type { SignalRHubConnection, SignalRWindow } from './signalr-types.js';
+import { registerPage } from './page-navigation.js';
 
 const createTableCell = (content: string): HTMLTableCellElement => {
     const cell: HTMLTableCellElement = document.createElement('td');
@@ -30,7 +31,7 @@ const createMobileItem = (notice: Notification): HTMLElement => {
     return item;
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+registerPage('notification.js', (signal) => {
 
     let currentPage: number = 1;
     const pageSize: number = 10;
@@ -44,6 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const response: Response = await fetch(`${API_ENDPOINTS.NOTIFICATION_LIST}?page=${page}&pageSize=${pageSize}`);
         const result = await response.json() as ApiResponseContract<NotificationListResponseContract>;
+        if (signal.aborted) {
+            return;
+        }
         const data = result.data;
         renderRecordings(data.recordings);
         renderPagination(data.totalRecords, page, pageSize);
@@ -248,15 +252,24 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadRecordings(currentPage);
     });
 
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (notificationHubConnection) {
             void notificationHubConnection.stop();
             notificationHubConnection = null;
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
 
     void loadRecordings(currentPage);
-    void initializeNotificationHubConnectionAsync();
+    void initializeNotificationHubConnectionAsync().then(() => {
+        if (signal.aborted) {
+            cleanup();
+        }
+    });
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        cleanup();
+    };
 });
 
 

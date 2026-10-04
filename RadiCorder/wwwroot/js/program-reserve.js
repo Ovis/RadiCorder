@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from './const.js';
 import { RadioServiceKind, ReserveType, RecordingTypeMap, ReserveTypeMap } from './define.js';
 import { setTextContent, setEventListener, setInnerHtml, sanitizeHtml } from './utils.js';
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
+import { registerPage } from './page-navigation.js';
 let recordingsCache = [];
 let currentSortKey = 'time';
 let currentSortDirection = 'asc';
@@ -9,6 +10,7 @@ const showToast = createInlineToast('program-reserve-result-toast', 'program-res
 let reserveHubConnection = null;
 let isRealtimeReloadRunning = false;
 let hasRealtimeReloadPending = false;
+let activePageSignal = null;
 // API由来の録音種別値を表示文字列へ変換する。
 const getRecordingTypeDisplayName = (value) => RecordingTypeMap[Number(value)]?.displayName ?? '未定義';
 // API由来の予約種別値を表示文字列へ変換する。
@@ -58,7 +60,11 @@ function showConfirmDialog(message) {
         document.body.appendChild(modal);
     });
 }
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('program-reserve.js', async (signal) => {
+    activePageSignal = signal;
+    recordingsCache = [];
+    currentSortKey = 'time';
+    currentSortDirection = 'asc';
     wireInlineToastClose('program-reserve-result-toast-close', 'program-reserve-result-toast');
     const sortTitleButton = document.getElementById('sort-title');
     const sortTimeButton = document.getElementById('sort-start');
@@ -129,13 +135,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     await loadRecordings();
+    if (signal.aborted) {
+        return;
+    }
     await initializeReserveHubConnectionAsync();
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (reserveHubConnection) {
             void reserveHubConnection.stop();
             reserveHubConnection = null;
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
+    if (signal.aborted) {
+        cleanup();
+    }
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        cleanup();
+    };
 });
 /**
  * SignalR経由の変更通知を受けた際に予約一覧を再同期する
@@ -190,10 +207,14 @@ const initializeReserveHubConnectionAsync = async () => {
     }
 };
 const loadRecordings = async () => {
+    const signal = activePageSignal;
     try {
         localStorage.removeItem('program-reserve-list');
         const response = await fetch(API_ENDPOINTS.RESERVE_PROGRAM_LIST);
         const result = await response.json();
+        if (signal?.aborted) {
+            return;
+        }
         const data = result.data ?? [];
         recordingsCache = data;
         localStorage.setItem('program-reserve-list', JSON.stringify(data));

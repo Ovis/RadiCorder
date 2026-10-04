@@ -12,6 +12,7 @@ import type {
 } from './openapi-contract.js';
 import { showConfirmDialog, showGlobalToast } from './feedback.js';
 import { setTextContent, setAttribute, setEventListener } from './utils.js';
+import { registerPage } from './page-navigation.js';
 
 let availableTags: Tag[] = [];
 type StrictRequired<T> = { [K in keyof T]-?: NonNullable<T[K]> };
@@ -52,8 +53,12 @@ const normalizeKeywordReserve = (entry: KeywordReserveResponseContract): Keyword
 
 const normalizeTagName = (value: string): string => value.trim().toLocaleLowerCase();
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadTags().then(() => loadRecordings());
+registerPage('keyword-reserve.js', (signal) => {
+    void loadTags().then(() => {
+        if (!signal.aborted) {
+            void loadRecordings(signal);
+        }
+    });
 });
 
 const loadTags = async (): Promise<void> => {
@@ -67,10 +72,13 @@ const loadTags = async (): Promise<void> => {
     }
 };
 
-const loadRecordings = async (): Promise<void> => {
+const loadRecordings = async (signal?: AbortSignal): Promise<void> => {
     try {
         const response: Response = await fetch(API_ENDPOINTS.RESERVE_KEYWORD_LIST);
         const result = await response.json() as ApiResponseContract<KeywordReserveResponseContract[]>;
+        if (signal?.aborted) {
+            return;
+        }
         const data: KeywordReserveState[] = (result.data ?? [])
             .map(normalizeKeywordReserve)
             .slice()

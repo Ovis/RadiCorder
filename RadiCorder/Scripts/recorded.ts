@@ -16,6 +16,7 @@ import { setTextContent, setEventListener, formatDisplayDateTime } from './utils
 import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
 import { configurePlayer, finishPlayer, playPlayerSource, stopPlayer } from './player-controller.js';
+import { registerPage } from './page-navigation.js';
 import { clearMultiSelect, renderSelectedTagChips, enableTouchLikeMultiSelect } from './tag-select-ui.js';
 import type { SignalRHubConnection, SignalRWindow } from './signalr-types.js';
 
@@ -41,43 +42,10 @@ const selectedRecordingIds = new Set<string>();
 let lastLoadedRecordings: Recording[] = [];
 const continuousPlaybackStorageKey = 'radicorder-recorded-continuous-playback';
 let currentPlayingRecordingId: string | null = null;
-let currentPlayingTitle: string | null = null;
-const defaultDocumentTitle = document.title;
 let recordingHubConnection: SignalRHubConnection | null = null;
 let isRealtimeReloadRunning = false;
 let hasRealtimeReloadPending = false;
-
-configurePlayer({
-    createControls: createPlayerJumpControls,
-    onEnded: () => { void handlePlaybackEnded(); },
-    onStateChanged: (state) => {
-        currentPlayingRecordingId = state?.recordId ?? null;
-        currentPlayingTitle = state?.title ?? null;
-        updateDocumentTitleByRecordingId(currentPlayingRecordingId);
-        syncRecordedListPlaybackButtons();
-    }
-});
-
-function updateDocumentTitleByRecordingId(recordId: string | null): void {
-    if (currentPlayingTitle && currentPlayingTitle.trim().length > 0) {
-        document.title = `${currentPlayingTitle.trim()} - RadiCorder`;
-        return;
-    }
-
-    if (!recordId) {
-        document.title = defaultDocumentTitle;
-        return;
-    }
-
-    const target = lastLoadedRecordings.find((x) => x.id === recordId);
-    const title = target?.title?.trim();
-    if (!title) {
-        document.title = defaultDocumentTitle;
-        return;
-    }
-
-    document.title = `${title} - RadiCorder`;
-}
+let activePageSignal: AbortSignal | null = null;
 
 function isCurrentRecordingPlaying(recordId: string): boolean {
     return currentPlayingRecordingId === recordId;
@@ -204,7 +172,29 @@ let tagsModalTitleElement: HTMLParagraphElement | null = null;
 let tagsModalListElement: HTMLUListElement | null = null;
 
 
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('recorded.js', async (signal) => {
+    activePageSignal = signal;
+    currentPage = 1;
+    currentPageSize = defaultPageSize;
+    sortBy = 'StartDateTime';
+    isDescending = true;
+    searchQuery = '';
+    withinDays = null;
+    stationIdFilter = '';
+    selectedTagIds = [];
+    tagMode = 'or';
+    untaggedOnly = false;
+    unlistenedOnly = false;
+    selectedRecordingIds.clear();
+    lastLoadedRecordings = [];
+    configurePlayer({
+        createControls: createPlayerJumpControls,
+        onEnded: () => { void handlePlaybackEnded(); },
+        onStateChanged: (state) => {
+            currentPlayingRecordingId = state?.recordId ?? null;
+            syncRecordedListPlaybackButtons();
+        }
+    });
     const verificationToken = (document.getElementById('VerificationToken') as HTMLInputElement | null)?.value ?? '';
 
     const searchBtn: HTMLButtonElement = document.getElementById('search-button') as HTMLButtonElement;
@@ -613,26 +603,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     await loadStationFilters();
+    if (signal.aborted) {
+        return;
+    }
     await loadTags();
+    if (signal.aborted) {
+        return;
+    }
     renderSelectedTagChips(tagFilterSelect, tagFilterChipsContainer, recordedTagChipOptions);
     renderSelectedTagChips(tagBulkSelect, tagBulkChipsContainer, recordedTagChipOptions);
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (recordingHubConnection) {
             void recordingHubConnection.stop();
             recordingHubConnection = null;
         }
-    });
-
+    };
     await loadRecordings(currentPage, sortBy, isDescending, searchQuery);
+    if (signal.aborted) {
+        return;
+    }
     await initializeRecordingHubConnectionAsync();
 
-    window.addEventListener('resize', () => {
+    const onResize = () => {
         const currentMobileView = isMobileView();
         if (currentMobileView !== previousMobileView) {
             previousMobileView = currentMobileView;
             renderRecordings(lastLoadedRecordings);
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('resize', onResize);
+    if (signal.aborted) {
+        cleanup();
+    }
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        window.removeEventListener('resize', onResize);
+        cleanup();
+    };
 });
 
 
@@ -644,6 +652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @param searchQuery
  */
 async function loadRecordings(page: number, sortBy: string, isDescending: boolean, searchQuery: string): Promise<void> {
+    const signal = activePageSignal;
 
     // テーブルヘッダーのソート項目のアイコンを調整
     Object.entries(sortingElements).forEach(([elementId, sortKey]) => {
@@ -688,6 +697,9 @@ async function loadRecordings(page: number, sortBy: string, isDescending: boolea
 
     const response: Response = await fetch(`${API_ENDPOINTS.PROGRAM_RECORDED}?${queryString.toString()}`);
     const result = await response.json() as ApiResponseContract<ListRecordingsResponseContract>;
+    if (signal?.aborted) {
+        return;
+    }
     const data = result.data;
     lastLoadedRecordings = data.recordings;
     renderRecordings(data.recordings);

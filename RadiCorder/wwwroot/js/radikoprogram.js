@@ -2,8 +2,10 @@ import { API_ENDPOINTS } from './const.js';
 import { AvailabilityTimeFree, RecordingType, RadioServiceKind } from './define.js';
 import { sanitizeHtml } from './utils.js';
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
+import { registerPage } from './page-navigation.js';
 const reservedRecordingKeys = new Set();
 const showProgramToast = createInlineToast('program-result-toast', 'program-result-toast-message');
+let activePageSignal = null;
 async function reserveProgramWithToast(programId, recordingType, button) {
     const reservationKey = `${programId}:${recordingType}`;
     if (reservedRecordingKeys.has(reservationKey)) {
@@ -41,12 +43,20 @@ async function reserveProgramWithToast(programId, recordingType, button) {
     button.disabled = false;
     button.classList.remove('opacity-70');
 }
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('radikoprogram.js', async (signal) => {
+    activePageSignal = signal;
+    reservedRecordingKeys.clear();
     wireInlineToastClose('program-result-toast-close', 'program-result-toast');
     const stationSelect = document.getElementById('stationSelect');
     const dateSelect = document.getElementById('dateSelect');
     await loadStationList();
+    if (signal.aborted) {
+        return;
+    }
     await populateDateSelect();
+    if (signal.aborted) {
+        return;
+    }
     stationSelect.addEventListener('change', async () => {
         const stationSelect = document.getElementById('stationSelect');
         const stationId = stationSelect.value;
@@ -64,8 +74,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     dateSelect.addEventListener('change', loadPrograms);
 });
 async function loadStationList() {
+    const signal = activePageSignal;
     const response = await fetch(API_ENDPOINTS.STATION_LIST_RADIKO);
     const result = await response.json();
+    if (signal?.aborted) {
+        return;
+    }
     const stationsByRegion = result.data;
     const stationSelect = document.getElementById('stationSelect');
     for (const region in stationsByRegion) {
@@ -81,8 +95,12 @@ async function loadStationList() {
     }
 }
 async function populateDateSelect() {
+    const signal = activePageSignal;
     const response = await fetch(API_ENDPOINTS.RADIO_DATE);
     const result = await response.json();
+    if (signal?.aborted) {
+        return;
+    }
     const dates = result.data ?? [];
     const dateSelect = document.getElementById('dateSelect');
     dateSelect.replaceChildren();
@@ -97,6 +115,7 @@ async function populateDateSelect() {
     });
 }
 async function loadPrograms() {
+    const signal = activePageSignal;
     const stationSelect = document.getElementById('stationSelect');
     const dateSelect = document.getElementById('dateSelect');
     const stationId = stationSelect.value;
@@ -104,6 +123,9 @@ async function loadPrograms() {
     if (stationId && date) {
         const response = await fetch(`${API_ENDPOINTS.PROGRAM_LIST_RADIKO}?d=${date}&s=${stationId}`);
         const result = await response.json();
+        if (signal?.aborted) {
+            return;
+        }
         const programs = result.data ?? [];
         renderPrograms(programs);
     }

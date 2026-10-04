@@ -225,4 +225,28 @@ public class StationRepositoryTests : UnitTestBase
     {
         _dbContext.ChangeTracker.Clear();
     }
+
+    [Test]
+    public async Task RadiruStations_削除されたエリアの局を無効化して再加入にも対応する()
+    {
+        NhkRadiruArea Area(string id) => new() { AreaId = id, ApiKey = id, AreaJpName = id };
+        NhkRadiruAreaService Service(string id) => new() { AreaId = id, ServiceId = "r1", HlsUrl = "https://example/r1.m3u8", IsActive = true };
+        await _repository.UpsertRadiruAreasAndServicesAsync([Area("130"), Area("270")], [Service("130"), Service("270")]);
+        await _repository.UpsertRadiruAreasAndServicesAsync([Area("130")], [Service("130")]);
+        Assert.That(await _repository.GetActiveRadiruAreaServiceKeysAsync(), Is.EqualTo(new[] { ("130", "r1") }));
+        Assert.That(await _dbContext.NhkRadiruAreas.CountAsync(), Is.EqualTo(2));
+        Assert.That((await _dbContext.NhkRadiruAreaServices.SingleAsync(x => x.AreaId == "270")).IsActive, Is.False);
+        await _repository.UpsertRadiruAreasAndServicesAsync([Area("130"), Area("270")], [Service("130"), Service("270")]);
+        Assert.That(await _repository.GetActiveRadiruAreaServiceKeysAsync(), Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public async Task RadiruStations_不完全な定義では既存局を変更しない()
+    {
+        var area = new NhkRadiruArea { AreaId = "130", ApiKey = "130", AreaJpName = "東京" };
+        await _repository.UpsertRadiruAreasAndServicesAsync([area], [new NhkRadiruAreaService { AreaId = "130", ServiceId = "r1", HlsUrl = "https://example/live.m3u8", IsActive = true }]);
+        Assert.ThrowsAsync<RadiCorder.Logics.Errors.DomainException>(async () => await _repository.UpsertRadiruAreasAndServicesAsync([], []));
+        Assert.ThrowsAsync<RadiCorder.Logics.Errors.DomainException>(async () => await _repository.UpsertRadiruAreasAndServicesAsync([area], []));
+        Assert.That(await _repository.GetActiveRadiruAreaServiceKeysAsync(), Has.Count.EqualTo(1));
+    }
 }

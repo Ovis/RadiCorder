@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using RadiCorder.Logics.Domain.ProgramSchedule;
+using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Domain.AppEvent;
 using RadiCorder.Logics.Logics.NotificationLogic;
 using RadiCorder.Logics.Logics.RadikoLogic;
@@ -20,7 +23,8 @@ public class ProgramUpdateRunner(
     NotificationLobLogic notificationLobLogic,
     IProgramUpdateStatusService programUpdateStatusService,
     IProgramUpdateStatusPublisher? programUpdateStatusPublisher = null,
-    IAppToastEventPublisher? appToastEventPublisher = null)
+    IAppToastEventPublisher? appToastEventPublisher = null,
+    IServiceScopeFactory? serviceScopeFactory = null)
 {
     private static readonly SemaphoreSlim ExecutionGate = new(1, 1);
 
@@ -46,20 +50,41 @@ public class ProgramUpdateRunner(
                 category: NoticeCategory.UpdateProgramStart,
                 message: "番組表の更新を開始します。");
 
-            // radiko 側の放送局/番組情報を更新する。
-            await radikoUniqueProcessLogic.RefreshRadikoAreaCacheAsync();
-            await stationLobLogic.UpsertRadikoStationDefinitionAsync();
-            await programScheduleLobLogic.UpdateLatestRadikoProgramDataAsync();
-            await programScheduleLobLogic.DeleteOldRadikoProgramAsync();
-
-            // らじる★らじる側の放送局/番組情報を更新する。
-            await stationLobLogic.TryUpdateRadiruStationInformationIfDueAsync(cancellationToken);
-            await programScheduleLobLogic.UpdateRadiruProgramDataAsync();
-            await programScheduleLobLogic.DeleteOldRadiruProgramAsync();
+            var report = new ProgramSyncReport();
+            // サービスごとにスコープと結果を分け、一方の取得・DB障害を他方へ持ち越さない。
+            await report.RunAsync("radiko", async () =>
+            {
+                using var scope = serviceScopeFactory?.CreateScope();
+                var radiko = scope?.ServiceProvider.GetRequiredService<RadikoUniqueProcessLogic>() ?? radikoUniqueProcessLogic;
+                var stations = scope?.ServiceProvider.GetRequiredService<StationLobLogic>() ?? stationLobLogic;
+                var programs = scope?.ServiceProvider.GetRequiredService<ProgramScheduleLobLogic>() ?? programScheduleLobLogic;
+                if (!(await radiko.RefreshRadikoAreaCacheAsync(cancellationToken)).IsSuccess) throw new DomainException("radikoのエリア取得に失敗しました。");
+                await stations.UpsertRadikoStationDefinitionAsync(cancellationToken);
+                (await programs.SynchronizeRadikoProgramsAsync(cancellationToken)).ThrowIfFailed();
+                await programs.DeleteOldRadikoProgramAsync();
+            }, cancellationToken);
+            await report.RunAsync("らじる★らじる", async () =>
+            {
+                using var scope = serviceScopeFactory?.CreateScope();
+                var stations = scope?.ServiceProvider.GetRequiredService<StationLobLogic>() ?? stationLobLogic;
+                var programs = scope?.ServiceProvider.GetRequiredService<ProgramScheduleLobLogic>() ?? programScheduleLobLogic;
+                await stations.UpdateRadiruStationInformationIfDueAsync(cancellationToken);
+                (await programs.SynchronizeRadiruProgramsAsync(cancellationToken)).ThrowIfFailed();
+                await programs.DeleteOldRadiruProgramAsync();
+            }, cancellationToken);
 
             // 更新後に予約再生成と更新時刻記録を行う。
             await reserveLobLogic.DeleteOldReserveEntryAsync();
             await reserveLobLogic.SetAllKeywordReserveScheduleAsync();
+            if (!report.IsSuccess)
+            {
+                foreach (var failure in report.Failures) logger.ZLogError(failure.Error, $"番組表更新に失敗しました。 service={failure.Target}");
+                var message = $"番組表の更新に一部失敗しました。対象: {string.Join(", ", report.Failures.Select(x => x.Target))}";
+                await notificationLobLogic.SetNotificationAsync(LogLevel.Error, NoticeCategory.UpdateProgramError, message);
+                await PublishStatusChangedSafeAsync(programUpdateStatusService.MarkFailed(message), cancellationToken);
+                await PublishGlobalToastSafeAsync(message, false, cancellationToken);
+                return;
+            }
             await programScheduleLobLogic.SetProgramLastUpdateDateTimeAsync();
 
             await notificationLobLogic.SetNotificationAsync(
@@ -71,6 +96,11 @@ public class ProgramUpdateRunner(
                 message: "番組表の更新が完了しました。",
                 isSuccess: true,
                 cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await PublishStatusChangedSafeAsync(programUpdateStatusService.MarkFailed("番組表更新が中断されました。"), CancellationToken.None);
+            throw;
         }
         catch (Exception ex)
         {

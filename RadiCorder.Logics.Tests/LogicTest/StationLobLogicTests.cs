@@ -72,6 +72,30 @@ namespace RadiCorder.Logics.Tests.LogicTest
         }
 
         [Test]
+        public async Task UpdateRadiruStationInformationAsync_エリアID欠落を削除扱いにしない()
+        {
+            _dbContext.NhkRadiruAreas.Add(new NhkRadiruArea { AreaId = "130", AreaJpName = "東京" });
+            _dbContext.NhkRadiruAreaServices.Add(new NhkRadiruAreaService { AreaId = "130", ServiceId = "r1", IsActive = true, HlsUrl = "https://example.test/live.m3u8" });
+            await _dbContext.SaveChangesAsync();
+            var handler = new FakeHttpMessageHandler();
+            handler.AddHandler(_ => true, _ => new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("<config><stream_url><data><areajp>東京</areajp><r1hls>https://example.test/live.m3u8</r1hls></data><data><areakey>270</areakey><r1hls>https://example.test/osaka.m3u8</r1hls></data></stream_url></config>")
+            });
+            _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(new HttpClient(handler));
+            Assert.ThrowsAsync<DomainException>(async () => await _stationLogic.UpdateRadiruStationInformationAsync());
+            Assert.That((await _dbContext.NhkRadiruAreaServices.AsNoTracking().SingleAsync()).IsActive, Is.True);
+            Assert.That(await _dbContext.NhkRadiruAreas.CountAsync(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void UpsertRadikoStationDefinitionAsync_一部の局ID欠落でも置換を中止する()
+        {
+            _radikoApiClientMock.Setup(x => x.GetRadikoStationsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<RadikoStation> { new() { StationId = "TBS" }, new() { StationId = "" } });
+            Assert.ThrowsAsync<DomainException>(async () => await _stationLogic.UpsertRadikoStationDefinitionAsync());
+        }
+
+        [Test]
         public async Task CheckInitializedRadikoStationAsync_未初期化状態テスト()
         {
             await using var dbTran = await _dbContext.Database.BeginTransactionAsync();

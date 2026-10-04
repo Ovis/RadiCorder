@@ -25,4 +25,5 @@ public interface IProgramUpdateStatusService
     /// 更新失敗状態を記録する。
     /// </summary>
     ProgramUpdateStatusSnapshot MarkFailed();
+    ProgramUpdateStatusSnapshot MarkFailed(string message) => MarkFailed() with { Message = message };
 }

@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Providers.Radiko;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using System.Web;
@@ -86,6 +87,7 @@ public class RadikoApiClient(
 
             return radikoStationList;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
             logger.ZLogError(e, $"radiko放送局情報取得処理で例外発生");
@@ -133,6 +135,7 @@ public class RadikoApiClient(
 
             return list;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
             logger.ZLogError(e, $"エリア {area} の放送局情報取得に失敗");
@@ -169,20 +172,34 @@ public class RadikoApiClient(
             var xmlString = await response.Content.ReadAsStringAsync(cancellationToken);
             var doc = XDocument.Parse(xmlString);
 
+            var stations = doc.Descendants("station").ToList();
+            if (stations.Count == 0 || stations.Any(x => x.Attribute("id")?.Value != stationId))
+            {
+                throw new DomainException("radiko番組表の対象局が見つかりません。APIの応答形式を確認してください。");
+            }
+
             var programList = new List<RadikoProgram>();
 
             // XMLデータをパースして番組リストを作成
-            foreach (var programElement in doc.Descendants("prog"))
+            foreach (var programElement in stations.SelectMany(x => x.Descendants("prog")))
             {
-                var (program, usedFallback, fallbackFields, strictError) = ParseWeeklyProgram(programElement, stationId);
+                var (program, usedFallback, fallbackFields, strictError) = RadikoProgramParser.ParseProgram(programElement, stationId);
                 if (program != null)
                 {
+                    if (string.IsNullOrWhiteSpace(program.Title) || program.EndTime <= program.StartTime)
+                    {
+                        throw new DomainException("radiko番組表の必須項目が不正です。");
+                    }
                     programList.Add(program);
+                }
+                else
+                {
+                    throw new DomainException("radiko番組表を解析できないため更新を中止しました。", strictError);
                 }
 
                 if (usedFallback)
                 {
-                    var context = BuildProgramContext(programElement);
+                    var context = RadikoProgramParser.BuildProgramContext(programElement);
                     var fieldText = fallbackFields.Count == 0
                         ? "unknown"
                         : string.Join(",", fallbackFields);
@@ -200,138 +217,17 @@ public class RadikoApiClient(
 
             return programList;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"radiko API呼び出し中に例外が発生: StationId={stationId}");
-            return new List<RadikoProgram>();
+            throw new DomainException("radiko番組表の取得に失敗しました。既存データを保持します。", ex);
         }
     }
 
-    private static (RadikoProgram? Program, bool UsedFallback, List<string> FallbackFields, Exception? StrictError) ParseWeeklyProgram(XElement programElement, string stationId)
-    {
-        try
-        {
-            var ft = programElement.Attribute("ft")?.Value ?? string.Empty;
-            var to = programElement.Attribute("to")?.Value ?? string.Empty;
-
-            var start = ft.ToJapaneseDateTime();
-            var end = to.ToJapaneseDateTime();
-            var tsInNg = programElement.Element("ts_in_ng")?.Value.Trim() ?? throw new DomainException("ts_in_ngが取得できませんでした。");
-
-            var program = new RadikoProgram
-            {
-                ProgramId = $"{stationId}_{ft + to}",
-                StartTime = start.ToUniversalTime(),
-                EndTime = end.ToUniversalTime(),
-                Title = programElement.Element("title")?.Value.Trim().ToSafeName().To半角英数字() ?? string.Empty,
-                Performer = programElement.Element("pfm")?.Value.Trim() ?? string.Empty,
-                Description = programElement.Element("info")?.Value.Trim() ??
-                              programElement.Element("desc")?.Value.Trim() ?? string.Empty,
-                StationId = stationId,
-                RadioDate = start.ToRadioDate(),
-                DaysOfWeek = start.ToRadioDayOfWeek().ToDaysOfWeek(),
-                AvailabilityTimeFree = tsInNg.FromString(),
-                ProgramUrl = programElement.Element("url")?.Value.Trim() ?? string.Empty,
-                ImageUrl = ExtractProgramImageUrl(programElement)
-            };
-
-            return (program, false, [], null);
-        }
-        catch (Exception ex)
-        {
-            var fallbackFields = new List<string>();
-
-            var ft = programElement.Attribute("ft")?.Value ?? string.Empty;
-            var to = programElement.Attribute("to")?.Value ?? string.Empty;
-
-            if (!TryParseJapaneseDateTime(ft, out var start))
-            {
-                fallbackFields.Add("ft(startDateTime)");
-            }
-
-            if (!TryParseJapaneseDateTime(to, out var end))
-            {
-                fallbackFields.Add("to(endDateTime)");
-            }
-
-            if (start == default || end == default)
-            {
-                return (null, true, fallbackFields, ex);
-            }
-
-            var tsInNg = programElement.Element("ts_in_ng")?.Value.Trim() ?? string.Empty;
-            if (!TryParseAvailabilityTimeFree(tsInNg, out var availability))
-            {
-                fallbackFields.Add("ts_in_ng(availabilityTimeFree)");
-            }
-
-            if (string.IsNullOrWhiteSpace(programElement.Element("title")?.Value))
-            {
-                fallbackFields.Add("title");
-            }
-
-            var fallbackProgram = new RadikoProgram
-            {
-                ProgramId = $"{stationId}_{ft + to}",
-                StartTime = start.ToUniversalTime(),
-                EndTime = end.ToUniversalTime(),
-                Title = programElement.Element("title")?.Value.Trim().ToSafeName().To半角英数字() ?? string.Empty,
-                Performer = programElement.Element("pfm")?.Value.Trim() ?? string.Empty,
-                Description = programElement.Element("info")?.Value.Trim() ??
-                              programElement.Element("desc")?.Value.Trim() ?? string.Empty,
-                StationId = stationId,
-                RadioDate = start.ToRadioDate(),
-                DaysOfWeek = start.ToRadioDayOfWeek().ToDaysOfWeek(),
-                AvailabilityTimeFree = availability,
-                ProgramUrl = programElement.Element("url")?.Value.Trim() ?? string.Empty,
-                ImageUrl = ExtractProgramImageUrl(programElement)
-            };
-
-            return (fallbackProgram, true, fallbackFields, ex);
-        }
-    }
-
-    private static bool TryParseJapaneseDateTime(string value, out DateTimeOffset dateTimeOffset)
-    {
-        try
-        {
-            dateTimeOffset = value.ToJapaneseDateTime();
-            return true;
-        }
-        catch
-        {
-            dateTimeOffset = default;
-            return false;
-        }
-    }
-
-    private static bool TryParseAvailabilityTimeFree(string value, out AvailabilityTimeFree availabilityTimeFree)
-    {
-        try
-        {
-            availabilityTimeFree = value.FromString();
-            return true;
-        }
-        catch
-        {
-            availabilityTimeFree = AvailabilityTimeFree.Unavailable;
-            return false;
-        }
-    }
-
-    private static string BuildProgramContext(XElement programElement)
-    {
-        var ft = programElement.Attribute("ft")?.Value ?? string.Empty;
-        var to = programElement.Attribute("to")?.Value ?? string.Empty;
-        var title = programElement.Element("title")?.Value.Trim() ?? string.Empty;
-        return $"ft={ft},to={to},title={title}";
-    }
-
-    private static string ExtractProgramImageUrl(XElement programElement)
-    {
-        var imageUrl = programElement.Element("img")?.Value?.Trim() ?? string.Empty;
-        return string.IsNullOrWhiteSpace(imageUrl) ? string.Empty : imageUrl;
-    }
     /// <summary>
     /// リアルタイム再生・録音用のplaylist_create_urlを取得する
     /// </summary>
@@ -424,5 +320,4 @@ public class RadikoApiClient(
         return builder.Uri.ToString();
     }
 }
-
 

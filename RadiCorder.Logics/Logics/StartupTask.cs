@@ -6,6 +6,7 @@ using RadiCorder.Logics.Logics.ProgramScheduleLogic;
 using RadiCorder.Logics.Logics.RadikoLogic;
 using RadiCorder.Logics.Logics.StationLogic;
 using RadiCorder.Logics.Services;
+using RadiCorder.Logics.BackgroundServices;
 using ZLogger;
 
 namespace RadiCorder.Logics.Logics
@@ -21,10 +22,12 @@ namespace RadiCorder.Logics.Logics
         StorageCapacityMonitorLobLogic storageCapacityMonitorLobLogic,
         StationLobLogic stationLobLogic,
         NotificationLobLogic notificationLobLogic,
-        IServiceScopeFactory? serviceScopeFactory = null)
+        IServiceScopeFactory? serviceScopeFactory = null,
+        ProgramUpdateQueue? programUpdateQueue = null)
     {
         public async Task InitializeAsync()
         {
+            _ = serviceScopeFactory; // 既存の呼び出し側とのコンストラクタ互換性を維持する。
             try
             {
                 // FFmpeg調整
@@ -41,7 +44,15 @@ namespace RadiCorder.Logics.Logics
 
                 // radikoログイン処理 
                 {
-                    await radikoLogic.LoginRadikoAsync();
+                    try
+                    {
+                        await radikoLogic.LoginRadikoAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.ZLogWarning(ex, $"radikoログインに失敗しました。他の機能の起動を継続します。");
+                        await notificationLobLogic.SetNotificationAsync(LogLevel.Warning, NoticeCategory.SystemError, "radikoログインに失敗しました。接続回復後に再試行します。");
+                    }
                 }
 
                 // 放送局情報の初期化
@@ -80,7 +91,15 @@ namespace RadiCorder.Logics.Logics
                         if (!await stationLobLogic.CheckInitializedRadiruRadiruStationAsync())
                         {
                             // らじる★らじるの放送局情報を初期化
-                            await stationLobLogic.UpdateRadiruStationInformationAsync();
+                            try
+                            {
+                                await stationLobLogic.UpdateRadiruStationInformationAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.ZLogWarning(ex, $"らじる★らじる初期取得に失敗しました。他の機能の起動を継続します。");
+                                await notificationLobLogic.SetNotificationAsync(LogLevel.Warning, NoticeCategory.SystemError, "らじる★らじる初期取得に失敗しました。接続回復後に再試行します。");
+                            }
                         }
                     }
                 }
@@ -90,25 +109,7 @@ namespace RadiCorder.Logics.Logics
                     // 24時間以内に番組表更新が行われていない場合のみ、起動時に即時更新を実行する。
                     if (await programScheduleLogic.HasProgramScheduleBeenUpdatedWithin24Hours() is false)
                     {
-                        if (serviceScopeFactory != null)
-                        {
-                            // 起動をブロックしないため、更新はバックグラウンドで開始する。
-                            // 専用スコープを作成して破棄済み DbContext 参照を防ぐ。
-                            _ = Task.Run(
-                                async () =>
-                                {
-                                    try
-                                    {
-                                        using var scope = serviceScopeFactory.CreateScope();
-                                        var scopedRunner = scope.ServiceProvider.GetRequiredService<ProgramUpdateRunner>();
-                                        await scopedRunner.ExecuteAsync("startup");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        logger.ZLogError(ex, $"起動時の番組表更新バックグラウンド実行でエラーが発生しました。");
-                                    }
-                                });
-                        }
+                        programUpdateQueue?.Enqueue("startup");
                     }
                 }
 

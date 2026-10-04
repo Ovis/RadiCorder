@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Domain.AppEvent;
 using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Domain.Recording;
+using RadiCorder.Logics.Models.Enums;
 using ZLogger;
 
 namespace RadiCorder.Logics.UseCases.Recording;
@@ -29,7 +30,9 @@ public class RecordingOrchestrator(
         var execution = new RecordingExecutionContext(
             command, logger, storage, repository, recordingStateEventPublisher, appToastEventPublisher, cancellationToken);
 
-        var source = sources.FirstOrDefault(s => s.CanHandle(command.ServiceKind));
+        var candidates = sources.Where(s => s.CanHandle(command.ServiceKind)).Take(2).ToList();
+        if (candidates.Count > 1) throw new InvalidOperationException($"録音ソースが重複登録されています。service={command.ServiceKind}");
+        var source = candidates.SingleOrDefault();
         if (source == null)
         {
             const string errorMessage = "未対応のサービスです。";
@@ -65,16 +68,30 @@ public class RecordingOrchestrator(
                 {
                     try
                     {
-                        execution.MediaPath = await storage.CommitAsync(execution.MediaPath, cancellationToken);
+                        execution.MediaPath = storage is IRecoverableMediaStorageService recoverableStorage
+                            ? await recoverableStorage.CommitRecordingAsync(execution.MediaPath, execution.RecordingId.Value, command.ScheduleJobId, cancellationToken)
+                            : await storage.CommitAsync(execution.MediaPath, cancellationToken);
                         execution.IsCommitted = true;
                         await repository.UpdateFilePathAsync(execution.RecordingId.Value, execution.MediaPath, cancellationToken);
-                        await execution.UpdateStateSafeAsync(RecordingState.Completed, null);
+                        // 完了の永続化失敗を成功として返さない。通知の失敗は許容する。
+                        await execution.UpdateStateRequiredAsync(RecordingState.Completed, null);
+                        if (string.IsNullOrEmpty(command.ScheduleJobId) && storage is IRecoverableMediaStorageService finalizedStorage)
+                        {
+                            finalizedStorage.CompleteFinalization(execution.RecordingId.Value);
+                        }
                         await execution.PublishGlobalToastSafeAsync($"{command.ProgramName} の録音が完了しました。", true);
 
                         return new RecordingResult(true, execution.RecordingId, null);
                     }
                     catch (Exception commitEx)
                     {
+                        if (execution.IsCommitted)
+                        {
+                            const string message = "録音ファイルは保存済みですが、DBの確定に失敗しました。再起動時に復旧します。";
+                            logger.ZLogError(commitEx, $"{message} recordingId={execution.RecordingId} path={execution.MediaPath.FinalFilePath}");
+                            await execution.PublishGlobalToastSafeAsync(message, false);
+                            return new RecordingResult(false, execution.RecordingId, message) { ErrorCode = ScheduleJobErrorCode.FinalizeFailed };
+                        }
                         execution.ShouldPreserveTempFile = true;
                         SaveFailedFallbackResult? fallbackResult = null;
 
@@ -115,7 +132,7 @@ public class RecordingOrchestrator(
 
                         await execution.UpdateStateSafeAsync(RecordingState.Failed, commitErrorMessage);
                         await execution.PublishGlobalToastSafeAsync(commitErrorMessage, false);
-                        return new RecordingResult(false, execution.RecordingId, commitErrorMessage);
+                        return new RecordingResult(false, execution.RecordingId, commitErrorMessage) { ErrorCode = ScheduleJobErrorCode.FinalizeFailed };
                     }
                 }
 
@@ -133,7 +150,7 @@ public class RecordingOrchestrator(
                         : "録音処理に失敗しました。";
                 await execution.UpdateStateSafeAsync(RecordingState.Failed, errorMessage);
                 await execution.PublishFailureToastSafeAsync(errorMessage);
-                return new RecordingResult(false, execution.RecordingId, errorMessage);
+                return new RecordingResult(false, execution.RecordingId, errorMessage) { ErrorCode = ScheduleJobErrorCode.SourceUnavailable };
             }
 
             const string retryErrorMessage = "録音処理に失敗しました。";
@@ -147,14 +164,14 @@ public class RecordingOrchestrator(
             logger.ZLogWarning($"{errorMessage}");
             await execution.UpdateStateSafeAsync(RecordingState.Failed, errorMessage);
             await execution.PublishFailureToastSafeAsync(errorMessage);
-            return new RecordingResult(false, execution.RecordingId, errorMessage);
+            return new RecordingResult(false, execution.RecordingId, errorMessage) { ErrorCode = ScheduleJobErrorCode.Cancelled };
         }
         catch (DomainException ex)
         {
             logger.ZLogWarning(ex, $"録音処理でドメイン例外が発生しました。");
             await execution.UpdateStateSafeAsync(RecordingState.Failed, ex.UserMessage);
             await execution.PublishFailureToastSafeAsync(ex.UserMessage);
-            return new RecordingResult(false, execution.RecordingId, ex.UserMessage);
+            return new RecordingResult(false, execution.RecordingId, ex.UserMessage) { ErrorCode = RecordingJobErrorClassifier.ClassifyError(ex) };
         }
         catch (Exception ex)
         {
@@ -162,7 +179,7 @@ public class RecordingOrchestrator(
             logger.ZLogError(ex, $"{errorMessage}");
             await execution.UpdateStateSafeAsync(RecordingState.Failed, errorMessage);
             await execution.PublishFailureToastSafeAsync(errorMessage);
-            return new RecordingResult(false, execution.RecordingId, errorMessage);
+            return new RecordingResult(false, execution.RecordingId, errorMessage) { ErrorCode = RecordingJobErrorClassifier.ClassifyError(ex) };
         }
         finally
         {

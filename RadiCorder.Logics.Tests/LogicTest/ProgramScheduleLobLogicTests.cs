@@ -501,7 +501,7 @@ public class ProgramScheduleLobLogicTests
             recordJobLobLogic,
             new EntryMapper(new Mock<IAppConfigurationService>().Object));
 
-        Assert.ThrowsAsync<Exception>(async () =>
+        Assert.ThrowsAsync<DomainException>(async () =>
             await logic.UpdateRadiruProgramDataAsync());
     }
 
@@ -654,7 +654,7 @@ public class ProgramScheduleLobLogicTests
     }
 
     [Test]
-    public async Task UpsertDailyProgramDataAsync_必須項目不足はスキップして保存対象から除外()
+    public void UpsertDailyProgramDataAsync_必須項目不足は更新を中止して既存データを保持する()
     {
         var (logic, repoMock, _, _, radiruApiClient) = CreateTargetWithClients();
         var now = DateTimeOffset.Now;
@@ -696,12 +696,8 @@ public class ProgramScheduleLobLogicTests
             logic,
             ["130", "r1", now]);
 
-        var result = await (ValueTask<bool>)invoked!;
-
-        Assert.That(result, Is.True);
-        Assert.That(saved, Is.Not.Null);
-        Assert.That(saved!.Count(), Is.EqualTo(1));
-        Assert.That(saved.Single().ProgramId, Is.EqualTo("ok-1"));
+        Assert.ThrowsAsync<DomainException>(async () => await (ValueTask<bool>)invoked!);
+        Assert.That(saved, Is.Null);
     }
 
     [Test]
@@ -776,4 +772,3 @@ public class ProgramScheduleLobLogicTests
         Assert.That(deleted, Is.EqualTo(expected));
     }
 }
-

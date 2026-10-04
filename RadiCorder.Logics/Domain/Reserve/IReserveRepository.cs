@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.RdbContext;
 
 namespace RadiCorder.Logics.Domain.Reserve;
@@ -26,6 +27,12 @@ public interface IReserveRepository
     /// 番組IDで録音予約を取得する
     /// </summary>
     ValueTask<ScheduleJob?> GetScheduleJobByProgramIdAsync(string programId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// サービスと番組IDで予約を取得する。旧実装は既存の一覧取得で互換性を保つ。
+    /// </summary>
+    async ValueTask<ScheduleJob?> GetScheduleJobByProgramKeyAsync(ProgramKey key, CancellationToken cancellationToken = default)
+        => (await GetScheduleJobsAsync(cancellationToken)).FirstOrDefault(x => x.ServiceKind == key.ServiceKind && x.ProgramId == key.ProgramId);
 
     /// <summary>
     /// 録音予約を削除する

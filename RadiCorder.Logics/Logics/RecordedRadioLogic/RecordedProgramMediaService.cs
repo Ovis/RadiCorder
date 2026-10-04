@@ -25,11 +25,9 @@ public class RecordedProgramMediaService(
     /// <param name="deletePhysicalFiles">ファイルも削除する場合は <c>true</c></param>
     public async ValueTask<bool> DeleteRecordedProgramAsync(Ulid recorderId, bool deletePhysicalFiles = true)
     {
-        if (deletePhysicalFiles && !await DeletePhysicalFilesAsync(recorderId))
-        {
-            return false;
-        }
-
+        var journal = new RecordingDeletionJournal(config);
+        var stagedFiles = new List<RecordingDeletionJournal.StagedFile>();
+        var databaseDeleted = false;
         try
         {
             var recording = await dbContext.Recordings.FindAsync(recorderId);
@@ -38,73 +36,75 @@ public class RecordedProgramMediaService(
                 return false;
             }
 
+            if (deletePhysicalFiles)
+            {
+                var (found, relativePath) = await GetRecordedProgramFilePathAsync(recorderId);
+                if (found && !string.IsNullOrEmpty(relativePath))
+                {
+                    if (!TryResolveFileFullPath(relativePath, out var fullPath)) return false;
+                    if (File.Exists(fullPath)) Stage(fullPath, false);
+                }
+                var (hasHls, playlistPath) = await GetHlsAsync(recorderId, false);
+                if (hasHls && File.Exists(playlistPath))
+                {
+                    var directory = Path.GetDirectoryName(playlistPath)!;
+                    Stage(directory, true);
+                }
+            }
+
             // Recordingを削除すれば関連データもカスケード削除される
             dbContext.Recordings.Remove(recording);
             await dbContext.SaveChangesAsync();
+            databaseDeleted = true;
+            foreach (var file in stagedFiles)
+            {
+                if (file.IsDirectory) Directory.Delete(file.Staged, true);
+                else File.Delete(file.Staged);
+            }
+            if (stagedFiles.Count > 0) journal.Complete(recorderId);
         }
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"録音済み番組の削除に失敗しました。");
-            return false;
+            return databaseDeleted;
         }
-
-        return true;
-    }
-
-    /// <summary>
-    /// 録音番組の実ファイルと生成済みHLSを削除する
-    /// </summary>
-    private async ValueTask<bool> DeletePhysicalFilesAsync(Ulid recorderId)
-    {
-        // 録音番組ファイル削除
+        finally
         {
-            var (isSuccess, filePath) = await GetRecordedProgramFilePathAsync(recorderId);
-            if (isSuccess && !string.IsNullOrEmpty(filePath))
+            if (!databaseDeleted)
             {
-                if (!TryResolveFileFullPath(filePath, out var fileFullPath))
-                {
-                    logger.ZLogWarning($"録音ファイルパスの解決に失敗しました。recordingId={recorderId}");
-                    return false;
-                }
-
-                if (File.Exists(fileFullPath))
+                var restored = true;
+                foreach (var file in stagedFiles.AsEnumerable().Reverse())
                 {
                     try
                     {
-                        File.Delete(fileFullPath);
+                        if (file.IsDirectory ? !Directory.Exists(file.Staged) : !File.Exists(file.Staged)) continue;
+                        if (file.IsDirectory) Directory.Move(file.Staged, file.Original);
+                        else File.Move(file.Staged, file.Original);
                     }
                     catch (Exception ex)
                     {
-                        logger.ZLogError(ex, $"ファイルの削除に失敗しました。");
-                        return false;
+                        restored = false;
+                        logger.ZLogError(ex, $"削除失敗後のファイル復元に失敗しました。 path={file.Staged}");
                     }
                 }
-            }
-        }
-
-        // HLSファイルの削除
-        {
-            var (isSuccess, path) = await GetHlsAsync(recorderId, false);
-            if (isSuccess && !string.IsNullOrEmpty(path) && File.Exists(path))
-            {
-                // Pathのファイルのあるフォルダごと削除する
-                var dir = Path.GetDirectoryName(path);
-                try
+                if (restored && stagedFiles.Count > 0)
                 {
-                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
-                    {
-                        Directory.Delete(dir, true);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.ZLogError(ex, $"HLSファイルの削除に失敗しました。");
-                    return false;
+                    try { journal.Complete(recorderId); }
+                    catch (Exception ex) { logger.ZLogWarning(ex, $"削除復旧情報を保持します。recordingId={recorderId}"); }
                 }
             }
         }
 
         return true;
+
+        void Stage(string original, bool isDirectory)
+        {
+            var staged = original + $".delete-{recorderId}";
+            stagedFiles.Add(new(original, staged, isDirectory));
+            journal.Write(new(recorderId, stagedFiles));
+            if (isDirectory) Directory.Move(original, staged);
+            else File.Move(original, staged);
+        }
     }
 
     /// <summary>

@@ -56,7 +56,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
         /// らじる★らじるの放送局情報を更新
         /// </summary>
         /// <returns></returns>
-        public async ValueTask<bool> UpdateRadiruStationInformationAsync()
+        public async ValueTask<bool> UpdateRadiruStationInformationAsync(CancellationToken cancellationToken = default)
         {
             List<NhkRadiruArea> areaDefinitions;
             List<NhkRadiruAreaService> serviceDefinitions;
@@ -68,15 +68,15 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 request.Headers.AcceptLanguage.ParseAdd("ja-JP,ja;q=0.9,en;q=0.8");
                 request.Headers.TryAddWithoutValidation("User-Agent", config.ExternalServiceUserAgent);
 
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     logger.ZLogError($"らじる★らじるの設定XML取得に失敗: StatusCode={response.StatusCode}");
                     response.EnsureSuccessStatusCode();
                 }
 
-                await using var responseStream = await response.Content.ReadAsStreamAsync();
-                var doc = await XDocument.LoadAsync(responseStream, LoadOptions.None, CancellationToken.None);
+                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                var doc = await XDocument.LoadAsync(responseStream, LoadOptions.None, cancellationToken);
 
                 var programNowOnAirUrlTemplate = GetDescendantValue(doc, "url_program_noa");
                 var programDetailApiUrlTemplate = GetDescendantValue(doc, "url_program_detail");
@@ -92,7 +92,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
                     if (string.IsNullOrWhiteSpace(areaId))
                     {
                         logger.ZLogWarning($"らじる★らじる設定XMLで areakey が空のためスキップしました。");
-                        continue;
+                        throw new RadiCorder.Logics.Errors.DomainException("らじるの局定義でエリアIDが欠落しています。既存DBを保持します。");
                     }
 
                     var areaName = GetDescendantValue(data, "areajp");
@@ -157,7 +157,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
 
             try
             {
-                await stationRepository.UpsertRadiruAreasAndServicesAsync(areaDefinitions, serviceDefinitions);
+                await stationRepository.UpsertRadiruAreasAndServicesAsync(areaDefinitions, serviceDefinitions, cancellationToken);
             }
             catch (Exception e)
             {
@@ -173,6 +173,21 @@ namespace RadiCorder.Logics.Logics.StationLogic
         /// </summary>
         public async ValueTask<bool> TryUpdateRadiruStationInformationIfDueAsync(CancellationToken cancellationToken = default)
         {
+            try
+            {
+                return await UpdateRadiruStationInformationIfDueAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception e)
+            {
+                logger.ZLogWarning(e, $"らじる★らじるの放送局定義更新に失敗しました。既存データで継続します。");
+                return false;
+            }
+        }
+
+        public async ValueTask<bool> UpdateRadiruStationInformationIfDueAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             var lastCheckedAt = await config.GetRadiruStationDefinitionLastCheckedAtAsync();
             var todayJst = DateOnly.FromDateTime(appContext.StandardDateTimeOffset.ToJapanDateTime());
 
@@ -185,18 +200,11 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 }
             }
 
-            try
-            {
-                await UpdateRadiruStationInformationAsync();
-                await config.UpdateRadiruStationDefinitionLastCheckedAtAsync(appContext.StandardDateTimeOffset.ToUniversalTime());
-                return true;
-            }
-            catch (Exception e)
-            {
-                logger.ZLogWarning(e, $"らじる★らじるの放送局定義更新に失敗しました。既存データで継続します。");
-                return false;
-            }
+            await UpdateRadiruStationInformationAsync(cancellationToken);
+            await config.UpdateRadiruStationDefinitionLastCheckedAtAsync(appContext.StandardDateTimeOffset.ToUniversalTime());
+            return true;
         }
+
 
         /// <summary>
         /// 指定エリアとサービスIDかららじる★らじるのHLS URLを取得

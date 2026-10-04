@@ -81,7 +81,7 @@ namespace RadiCorder.Logics.Tests.LogicTest
 
             var result = await _radikoLogic.GetPartialKeyString();
 
-            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(result.IsSuccess, Is.False);
             Assert.That(result.Key, Is.EqualTo(string.Empty));
         }
 
@@ -247,6 +247,23 @@ namespace RadiCorder.Logics.Tests.LogicTest
             var result = RadikoUniqueProcessLogic.ResolveSubStationId("JP13", "ABC", "JP27/ABC/ABC1,JP13/TBS/TBS1");
 
             Assert.That(result, Is.Null);
+        }
+
+        [Test]
+        public async Task LogoutRadikoAsync_成功後はキャッシュ済みセッションを再利用しない()
+        {
+            var loginCount = 0;
+            _configMock.Setup(c => c.TryGetRadikoCredentialsAsync()).Returns(ValueTask.FromResult((true, "user", "pass")));
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/login"), _ =>
+            {
+                loginCount++;
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"radiko_session\":\"session-a\",\"paid_member\":\"1\",\"areafree\":\"1\"}") };
+            });
+            _httpHandler.AddHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/logout"), _ => new HttpResponseMessage(HttpStatusCode.OK));
+            var loggedIn = await _radikoLogic.LoginRadikoAsync();
+            Assert.That(await _radikoLogic.LogoutRadikoAsync(loggedIn.Session), Is.True);
+            Assert.That((await _radikoLogic.LoginRadikoAsync()).IsSuccess, Is.True);
+            Assert.That(loginCount, Is.EqualTo(2));
         }
 
         [Test]

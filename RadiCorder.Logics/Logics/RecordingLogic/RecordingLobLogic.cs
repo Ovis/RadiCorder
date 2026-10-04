@@ -77,7 +77,9 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
                         logLevel: LogLevel.Error,
                         category: NoticeCategory.RecordingError,
                         message: $"{programName} の録音に失敗しました。理由: {errorMessage}");
-                    return (false, new DomainException(errorMessage));
+                    return (false, result.ErrorCode == ScheduleJobErrorCode.Cancelled
+                        ? new OperationCanceledException(errorMessage, cancellationToken)
+                        : new RecordingFailureException(result.ErrorCode, errorMessage));
                 }
 
                 await notificationLobLogic.SetNotificationAsync(
@@ -171,7 +173,7 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
         /// <summary>
         /// キーワード予約に紐づくタグを録音へ自動付与
         /// </summary>
-        private async ValueTask TryApplyKeywordReserveTagsAsync(string scheduleJobId, Ulid recordingId)
+        internal async ValueTask TryApplyKeywordReserveTagsAsync(string scheduleJobId, Ulid recordingId)
         {
             if (string.IsNullOrEmpty(scheduleJobId) || !Ulid.TryParse(scheduleJobId, out var scheduleJobUlid))
             {
@@ -200,7 +202,7 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
                 // タグ統合の取りこぼしを防ぐ。
                 var sameProgramRows = await dbContext.ScheduleJob
                     .AsNoTracking()
-                    .Where(x => x.ProgramId == schedule.ProgramId && x.ReserveType == ReserveType.Keyword)
+                    .Where(x => x.ProgramId == schedule.ProgramId && x.ServiceKind == schedule.ServiceKind && x.ReserveType == ReserveType.Keyword)
                     .Select(x => new { x.Id, x.KeywordReserveId })
                     .ToListAsync();
 

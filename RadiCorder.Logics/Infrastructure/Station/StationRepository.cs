@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RadiCorder.Logics.Errors;
 using RadiCorder.Logics.Domain.Station;
 using RadiCorder.Logics.Models.NhkRadiru;
 using RadiCorder.Logics.RdbContext;
@@ -243,6 +244,12 @@ public class StationRepository(RadioDbContext dbContext) : IStationRepository
             .Select(g => g.First())
             .ToList();
 
+        // 不完全な応答を局の削除と判断しないよう、保存前に定義全体を検証する。
+        if (areaList.Count == 0 || areaList.Any(a => !serviceList.Any(s => s.AreaId == a.AreaId)))
+        {
+            throw new DomainException("らじる★らじるの局定義が不完全です。既存の局情報を保持します。");
+        }
+
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -268,6 +275,14 @@ public class StationRepository(RadioDbContext dbContext) : IStationRepository
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            var removedAreaServices = await dbContext.NhkRadiruAreaServices
+                .Where(s => !areaIdSet.Contains(s.AreaId) && s.IsActive)
+                .ToListAsync(cancellationToken);
+            foreach (var service in removedAreaServices)
+            {
+                service.IsActive = false;
+            }
 
             if (areaIdSet.Count > 0)
             {

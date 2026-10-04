@@ -43,14 +43,14 @@ public class RadikoRecordingSource(
         }
 
         // 現在エリア取得
-        var (areaSuccess, area) = await radikoUniqueProcessLogic.GetRadikoAreaAsync();
+        var (areaSuccess, area) = await radikoUniqueProcessLogic.GetRadikoAreaAsync(cancellationToken: cancellationToken);
         if (!areaSuccess)
         {
             throw new DomainException("エリア情報の取得に失敗しました。");
         }
 
         // ログインとエリアチェック
-        var (_, session, _, isAreaFree) = await radikoUniqueProcessLogic.LoginRadikoAsync();
+        var (_, session, _, isAreaFree) = await radikoUniqueProcessLogic.LoginRadikoAsync(cancellationToken: cancellationToken);
         var stationInformation = await dbContext.RadikoStations.FindAsync(program.StationId);
         var currentAreaStation = await stationLobLogic.GetCurrentAreaStations(area);
         if (stationInformation != null && !currentAreaStation.Contains(stationInformation.StationId) && !isAreaFree)
@@ -64,7 +64,7 @@ public class RadikoRecordingSource(
                                     !currentAreaStation.Contains(stationInformation.StationId);
 
         // 認証トークン取得
-        var (authSuccess, token, areaId, subStations) = await radikoUniqueProcessLogic.AuthorizeRadikoAsync(session);
+        var (authSuccess, token, areaId, subStations) = await radikoUniqueProcessLogic.AuthorizeRadikoAsync(session, cancellationToken: cancellationToken);
         if (!authSuccess || string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(areaId))
         {
             throw new DomainException("radiko認証に失敗しました。");
@@ -150,7 +150,8 @@ public class RadikoRecordingSource(
             Headers: headers,
             ProgramInfo: programInfo,
             Options: options,
-            RequestStationIdOverride: requestStationId);
+            RequestStationIdOverride: requestStationId)
+        { AcquisitionPlan = new(command.IsTimeFree ? RecordingAcquisitionPlan.RadikoTimeFree : RecordingAcquisitionPlan.Live, TailCompensationSeconds: 10) };
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using RadiCorder.Logics.Errors;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Application;
 using RadiCorder.Logics.Extensions;
@@ -46,7 +48,7 @@ public class RadiruApiClient(
             if (string.IsNullOrWhiteSpace(dailyProgramApiUrlTemplate))
             {
                 logger.ZLogWarning($"らじる★らじる番組表URLテンプレートが見つからないためスキップ areaId={areaId} serviceId={serviceId}");
-                return [];
+                throw new DomainException("らじる★らじる番組表URLが見つかりません。");
             }
 
             var url = dailyProgramApiUrlTemplate
@@ -54,8 +56,6 @@ public class RadiruApiClient(
                 .Replace("{area}", areaId)
                 .Replace("{service}", serviceId)
                 .Replace("[YYYY-MM-DD]", date.ToString("yyyy-MM-dd"));
-
-            await WaitForRadiruRequestSlotAsync(cancellationToken);
 
             using var response = await HttpClientExecutionHelper.SendWithRetryAsync(
                 logger,
@@ -68,15 +68,19 @@ public class RadiruApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken,
+                beforeAttempt: WaitForRadiruRequestSlotAsync);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.ZLogError($"らじる★らじる API呼び出しに失敗: {url}, StatusCode: {response.StatusCode.ToString()}");
-                return [];
-            }
+            response.EnsureSuccessStatusCode();
 
             var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var document = JsonDocument.Parse(jsonString, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.EnumerateObject().Any(x => x.Value.ValueKind == JsonValueKind.Object &&
+                    x.Value.TryGetProperty("publication", out var publication) && publication.ValueKind == JsonValueKind.Array))
+            {
+                throw new DomainException("らじる★らじる番組表の応答形式が不正です。");
+            }
             var errorCounts = new Dictionary<string, int>(StringComparer.Ordinal);
             var programList = RadiruProgramJsonEntity.FromJson(
                 jsonString,
@@ -88,6 +92,14 @@ public class RadiruApiClient(
                         errorCounts[path]++;
                     }
                 });
+
+            var expectedCount = document.RootElement.EnumerateObject()
+                .Where(x => x.Value.ValueKind == JsonValueKind.Object && x.Value.TryGetProperty("publication", out var value) && value.ValueKind == JsonValueKind.Array)
+                .Sum(x => x.Value.GetProperty("publication").GetArrayLength());
+            if (programList.Count != expectedCount)
+            {
+                throw new DomainException("らじる★らじる番組表の一部を解析できないため更新を中止しました。");
+            }
 
             if (errorCounts.Count > 0)
             {
@@ -102,10 +114,14 @@ public class RadiruApiClient(
 
             return programList;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.ZLogError(ex, $"らじる★らじる API呼び出し中に例外が発生: エリア {areaId}, 放送局 {serviceId}, 日付 {date:yyyy-MM-dd}");
-            return [];
+            throw new DomainException("らじる★らじる番組表の取得に失敗しました。既存データを保持します。", ex);
         }
     }
 

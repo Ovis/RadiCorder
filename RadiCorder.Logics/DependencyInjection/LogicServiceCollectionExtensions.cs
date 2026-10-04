@@ -1,3 +1,5 @@
+using RadiCorder.Logics.Providers.Radiko;
+using RadiCorder.Logics.Providers.Radiru;
 using RadiCorder.Logics.Services.Streaming;
 using System.Net;
 using RadiCorder.Logics.ApiClients;
@@ -114,6 +116,9 @@ public static class LogicServiceCollectionExtensions
         services.AddScoped<IRecordingSource, RadikoRecordingSource>();
         services.AddScoped<IRecordingSource, RadiruRecordingSource>();
         services.AddScoped<IMediaStorageService, MediaStorageService>();
+        services.AddSingleton<RecordingFinalizationJournal>();
+        services.AddScoped<RecordingFinalizationRecovery>();
+        services.AddScoped<IRecordingAcquisitionMethod, RadikoTimeFreeRecorder>();
         services.AddScoped<IMediaTranscodeService, MediaTranscodeService>();
         services.AddScoped<IRecordingRepository, RecordingRepository>();
         services.AddScoped<RecordingLobLogic>();
@@ -125,11 +130,16 @@ public static class LogicServiceCollectionExtensions
     private static IServiceCollection AddProgramScheduleServices(this IServiceCollection services)
     {
         services.AddSingleton<IProgramUpdateStatusService, ProgramUpdateStatusService>();
+        services.AddSingleton<ProgramUpdateQueue>();
         services.AddScoped<IRadioAppContext, RadioAppContext>();
         services.AddScoped<IStationRepository, StationRepository>();
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
         services.AddScoped<StationLobLogic>();
         services.AddScoped<ProgramScheduleLobLogic>();
+        services.AddScoped<IProgramSearchProvider, RadikoProgramSearchProvider>();
+        services.AddScoped<IProgramSearchProvider, RadiruProgramSearchProvider>();
+        services.AddScoped<IProgramLookupProvider, RadikoProgramLookupProvider>();
+        services.AddScoped<IProgramLookupProvider, RadiruProgramLookupProvider>();
         services.AddScoped<ProgramSearchService>();
         services.AddScoped<ProgramUpdateRunner>();
         services.AddScoped<RecordedProgramQueryService>();
@@ -184,6 +194,7 @@ public static class LogicServiceCollectionExtensions
         services.AddSingleton<IRecordingScheduleWakeup, RecordingScheduleWakeup>();
         services.AddHostedService<RecordingScheduleBackgroundService>();
         services.AddHostedService<ProgramUpdateScheduleBackgroundService>();
+        services.AddHostedService<ProgramUpdateWorker>();
         services.AddHostedService<MaintenanceCleanupScheduleBackgroundService>();
         services.AddHostedService<StorageCapacityMonitorBackgroundService>();
         services.AddHostedService<ClockSkewMonitorBackgroundService>();

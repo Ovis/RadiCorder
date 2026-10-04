@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using Microsoft.EntityFrameworkCore;
 using RadiCorder.Logics.Domain.Reserve;
 using RadiCorder.Logics.Models.Enums;
@@ -57,6 +58,9 @@ public class ReserveRepository(RadioDbContext dbContext) : IReserveRepository
         return await dbContext.ScheduleJob
             .FirstOrDefaultAsync(x => x.ProgramId == programId, cancellationToken);
     }
+
+    public async ValueTask<ScheduleJob?> GetScheduleJobByProgramKeyAsync(ProgramKey key, CancellationToken cancellationToken = default)
+        => await dbContext.ScheduleJob.FirstOrDefaultAsync(x => x.ServiceKind == key.ServiceKind && x.ProgramId == key.ProgramId, cancellationToken);
 
     /// <summary>
     /// 録音予約を削除する

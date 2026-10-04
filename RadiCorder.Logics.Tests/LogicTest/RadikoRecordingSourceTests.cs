@@ -67,7 +67,7 @@ public class RadikoRecordingSourceTests
 
         handler.AddHandler(
             req => req.RequestUri!.ToString().StartsWith("http://radiko.jp/apps/js/playerCommon.js"),
-            _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("new RadikoJSPlayer('a','b','0123456789ABCDEF'){") });
+            _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("new RadikoJSPlayer('a','b','0123456789ABCDEF',{") });
 
         handler.AddHandler(
             req => req.RequestUri!.ToString().StartsWith("https://radiko.jp/v2/api/auth2"),

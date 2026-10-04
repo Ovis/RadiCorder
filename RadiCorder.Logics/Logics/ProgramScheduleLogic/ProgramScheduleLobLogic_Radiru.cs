@@ -1,4 +1,7 @@
+using RadiCorder.Logics.Providers.Radiru;
 using RadiCorder.Logics.Extensions;
+using RadiCorder.Logics.Errors;
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Models;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Models.NhkRadiru;
@@ -53,7 +56,11 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
 
         public async ValueTask UpdateRadiruProgramDataAsync()
+            => (await SynchronizeRadiruProgramsAsync(default)).ThrowIfFailed();
+
+        public async ValueTask<ProgramSyncReport> SynchronizeRadiruProgramsAsync(CancellationToken cancellationToken)
         {
+            var report = new ProgramSyncReport();
             var dateList = Enumerable.Range(-6, 15)
                 .Select(i => appContext.StandardDateTimeOffset.AddDays(-i))
                 .ToList();
@@ -63,7 +70,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             {
                 foreach (var dateTimeOffset in dateList)
                 {
-                    var areaServices = await radiruApiClient.GetAvailableAreaServicesAsync(dateTimeOffset);
+                    var areaServices = await radiruApiClient.GetAvailableAreaServicesAsync(dateTimeOffset, cancellationToken);
                     if (areaServices.Count == 0)
                     {
                         continue;
@@ -73,7 +80,10 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
                     foreach (var (areaId, serviceId) in areaServices.Distinct())
                     {
-                        await UpsertDailyProgramDataAsync(areaId, serviceId, dateTimeOffset);
+                        await report.RunAsync($"{areaId}:{serviceId}:{dateTimeOffset:yyyy-MM-dd}", async () =>
+                        {
+                            await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dateTimeOffset, cancellationToken);
+                        }, cancellationToken);
                     }
                 }
             }
@@ -87,6 +97,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             {
                 logger.ZLogWarning($"らじる★らじるの取得対象サービスが存在しないため番組表更新をスキップしました。");
             }
+            return report;
         }
 
 
@@ -105,8 +116,11 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
 
         private async ValueTask<bool> UpsertDailyProgramDataAsync(string areaId, string serviceId, DateTimeOffset dt)
+            => await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dt, default);
+
+        private async ValueTask<bool> UpsertDailyProgramDataCoreAsync(string areaId, string serviceId, DateTimeOffset dt, CancellationToken cancellationToken)
         {
-            var programList = await radiruApiClient.GetDailyProgramsAsync(areaId, serviceId, dt);
+            var programList = await radiruApiClient.GetDailyProgramsAsync(areaId, serviceId, dt, cancellationToken);
 
             if (!programList.Any())
             {
@@ -119,11 +133,11 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
                 foreach (var programJsonEntity in programList)
                 {
-                    if (!TryCreateRadiruProgramEntry(areaId, serviceId, programJsonEntity, out var entry))
+                    if (!RadiruProgramNormalizer.TryNormalize(areaId, serviceId, programJsonEntity, out var entry))
                     {
                         logger.ZLogWarning(
                             $"らじる★らじる番組を必須項目不足でスキップ areaId={areaId} stationId={serviceId} programId={programJsonEntity.Id}");
-                        continue;
+                        throw new DomainException("らじる★らじる番組表の必須項目が不足しています。既存データを保持します。");
                     }
 
                     entries.Add(entry);
@@ -135,7 +149,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
                     return false;
                 }
 
-                await programScheduleRepository.UpsertRadiruProgramsAsync(entries);
+                await programScheduleRepository.UpsertRadiruProgramsAsync(entries, cancellationToken);
             }
             catch (Exception e)
             {
@@ -145,122 +159,6 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
 
             return true;
         }
-
-        private static bool TryCreateRadiruProgramEntry(
-            string areaId,
-            string serviceId,
-            RadiruProgramJsonEntity programJsonEntity,
-            out NhkRadiruProgram entry)
-        {
-            var hasRequiredFieldError = false;
-            var title = programJsonEntity.GetTitle();
-
-            if (string.IsNullOrWhiteSpace(programJsonEntity.Id))
-            {
-                hasRequiredFieldError = true;
-            }
-
-            if (programJsonEntity.StartDate == default)
-            {
-                hasRequiredFieldError = true;
-            }
-
-            if (programJsonEntity.EndDate == default)
-            {
-                hasRequiredFieldError = true;
-            }
-
-            if (programJsonEntity.StartDate != default &&
-                programJsonEntity.EndDate != default &&
-                programJsonEntity.EndDate <= programJsonEntity.StartDate)
-            {
-                hasRequiredFieldError = true;
-            }
-
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                hasRequiredFieldError = true;
-            }
-
-            if (hasRequiredFieldError)
-            {
-                entry = new NhkRadiruProgram();
-                return false;
-            }
-
-            var onDemandContentUrl = SelectOnDemandContentUrl(programJsonEntity.About.Audio);
-            var onDemandExpiresAtUtc = programJsonEntity.About.Audio.Expires == default
-                ? (DateTime?)null
-                : programJsonEntity.About.Audio.Expires.UtcDateTime;
-
-            entry = new NhkRadiruProgram
-            {
-                ProgramId = $"{programJsonEntity.Id}",
-                StationId = serviceId,
-                AreaId = areaId,
-                RadioDate = programJsonEntity.StartDate.ToRadioDate(),
-                DaysOfWeek = programJsonEntity.StartDate.ToRadioDayOfWeek().ToDaysOfWeek(),
-                EventId = programJsonEntity.About.Id,
-                StartTime = programJsonEntity.StartDate,
-                EndTime = programJsonEntity.EndDate,
-                Title = title,
-                Subtitle = programJsonEntity.IdentifierGroup.RadioEpisodeName.ToSafeName().To半角英数字(),
-                Description = programJsonEntity.GetCombinedDescription(),
-                Performer = programJsonEntity.GetCombinedActorsAndArtists(),
-                SiteId = programJsonEntity.IdentifierGroup.SiteId,
-                ImageUrl = programJsonEntity.About.PartOfSeries.Logo.Medium.Url,
-                ProgramUrl = programJsonEntity.About.Url,
-                OnDemandContentUrl = onDemandContentUrl,
-                OnDemandExpiresAtUtc = onDemandExpiresAtUtc
-            };
-
-            return true;
-        }
-
-        private static string? SelectOnDemandContentUrl(Audio audio)
-        {
-            var detailedContents = audio.DetailedContent
-                .Where(d => !string.IsNullOrWhiteSpace(d.ContentUrl))
-                .ToList();
-
-            if (detailedContents.Count == 0)
-            {
-                return null;
-            }
-
-            var prioritized = detailedContents.FirstOrDefault(d =>
-                string.Equals(d.Name, "hls_widevine", StringComparison.OrdinalIgnoreCase) &&
-                IsM3u8Url(d.ContentUrl));
-            if (prioritized is not null)
-            {
-                return prioritized.ContentUrl;
-            }
-
-            var fallback = detailedContents.FirstOrDefault(d => IsM3u8Url(d.ContentUrl));
-            return fallback?.ContentUrl;
-        }
-
-        private static bool IsM3u8Url(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return false;
-            }
-
-            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
-            {
-                return false;
-            }
-
-            if (!uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
-                !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            return uri.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase);
-        }
-
 
         /// <summary>
         /// らじる★らじる番組表検索

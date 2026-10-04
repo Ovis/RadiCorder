@@ -13,6 +13,20 @@ public class ReserveRepositoryTests : UnitTestBase
     private RadioDbContext _dbContext = null!;
     private ReserveRepository _repository = null!;
 
+    [Test]
+    public async Task 同じ番組IDでもサービスごとに予約を取得する()
+    {
+        var radiko = CreateScheduleJob();
+        radiko.ProgramId = "shared";
+        radiko.ServiceKind = RadioServiceKind.Radiko;
+        var radiru = CreateScheduleJob();
+        radiru.ProgramId = "shared";
+        radiru.ServiceKind = RadioServiceKind.Radiru;
+        await _repository.AddScheduleJobsAsync([radiko, radiru]);
+        Assert.That((await _repository.GetScheduleJobByProgramKeyAsync(new(RadioServiceKind.Radiko, "shared")))!.Id, Is.EqualTo(radiko.Id));
+        Assert.That((await _repository.GetScheduleJobByProgramKeyAsync(new(RadioServiceKind.Radiru, "shared")))!.Id, Is.EqualTo(radiru.Id));
+    }
+
     [SetUp]
     public async Task Setup()
     {

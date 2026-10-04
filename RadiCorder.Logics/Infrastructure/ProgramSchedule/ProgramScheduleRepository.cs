@@ -358,6 +358,23 @@ public class ProgramScheduleRepository(RadioDbContext dbContext) : IProgramSched
 
         try
         {
+            // 既存DBの主キーはProgramId単独。別エリア・局への再利用は更新前に検出する。
+            var inputCollisions = programList.GroupBy(x => x.ProgramId, StringComparer.Ordinal)
+                .Where(x => x.Select(p => (p.AreaId, p.StationId)).Distinct().Count() > 1)
+                .Select(x => x.Key).ToList();
+            var programIdsToCheck = programList.Select(x => x.ProgramId).ToList();
+            var storedKeys = await dbContext.NhkRadiruPrograms.AsNoTracking()
+                .Where(x => programIdsToCheck.Contains(x.ProgramId))
+                .Select(x => new { x.ProgramId, x.AreaId, x.StationId }).ToListAsync(cancellationToken);
+            var storedById = storedKeys.ToDictionary(x => x.ProgramId, StringComparer.Ordinal);
+            var storedCollisions = programList.Where(x => storedById.TryGetValue(x.ProgramId, out var previous) &&
+                (previous.AreaId != x.AreaId || previous.StationId != x.StationId)).Select(x => x.ProgramId);
+            var collisions = inputCollisions.Concat(storedCollisions).Distinct(StringComparer.Ordinal).ToList();
+            if (collisions.Count > 0)
+            {
+                throw new RadiCorder.Logics.Errors.DomainException($"らじる番組IDが異なるエリア・局で重複しています。既存DBを保持します。対象: {string.Join(",", collisions.Take(5))}");
+            }
+
             var existingPrograms = new HashSet<string>(StringComparer.Ordinal);
             var trackedProgramsByKey = dbContext.NhkRadiruPrograms.Local
                 .ToDictionary(

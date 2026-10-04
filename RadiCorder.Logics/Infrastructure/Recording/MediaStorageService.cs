@@ -15,7 +15,8 @@ namespace RadiCorder.Logics.Infrastructure.Recording;
 /// </summary>
 public class MediaStorageService(
     IAppConfigurationService config,
-    ILogger<MediaStorageService>? logger = null) : IMediaStorageService
+    ILogger<MediaStorageService>? logger = null,
+    RecordingFinalizationJournal? finalizationJournal = null) : IRecoverableMediaStorageService
 {
     /// <summary>
     /// 保存先パスを準備する
@@ -43,7 +44,27 @@ public class MediaStorageService(
     /// 一時ファイルを最終保存先へ確定させる
     /// </summary>
     public ValueTask<MediaPath> CommitAsync(MediaPath path, CancellationToken cancellationToken = default)
+        => CommitCoreAsync(path, null, cancellationToken);
+
+    public ValueTask<MediaPath> CommitRecordingAsync(MediaPath path, Ulid recordingId, string? scheduleJobId, CancellationToken cancellationToken)
+        => CommitCoreAsync(path, new RecordingFinalizationJournal.Entry(recordingId, scheduleJobId, path), cancellationToken);
+
+    public void CompleteFinalization(Ulid recordingId)
+        => (finalizationJournal ?? new RecordingFinalizationJournal(config)).Complete(recordingId);
+
+    public void CompleteJobFinalization(Ulid scheduleJobId)
     {
+        var journal = finalizationJournal ?? new RecordingFinalizationJournal(config);
+        foreach (var file in journal.GetPendingFiles())
+        {
+            var entry = journal.Read(file);
+            if (entry.ScheduleJobId == scheduleJobId.ToString()) journal.Complete(entry.RecordingId);
+        }
+    }
+
+    private ValueTask<MediaPath> CommitCoreAsync(MediaPath path, RecordingFinalizationJournal.Entry? entry, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         // 保存先ディレクトリが無ければ作成
         var dir = Path.GetDirectoryName(path.FinalFilePath);
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
@@ -58,7 +79,6 @@ public class MediaStorageService(
         if (File.Exists(path.FinalFilePath))
         {
             finalFilePath = AddDuplicateSuffix(path.FinalFilePath);
-            File.Move(path.TempFilePath, finalFilePath);
 
             var relativeDirectory = Path.GetDirectoryName(path.RelativePath) ?? string.Empty;
             var renamedFileName = Path.GetFileName(finalFilePath);
@@ -66,16 +86,25 @@ public class MediaStorageService(
                 ? renamedFileName
                 : Path.Combine(relativeDirectory, renamedFileName);
         }
-        else
-        {
-            File.Move(path.TempFilePath, path.FinalFilePath);
-        }
-
-        return ValueTask.FromResult(path with
+        var committedPath = path with
         {
             FinalFilePath = finalFilePath,
             RelativePath = relativePath
-        });
+        };
+        if (entry != null)
+        {
+            (finalizationJournal ?? new RecordingFinalizationJournal(config)).Write(entry with { Path = committedPath });
+        }
+        try
+        {
+            File.Move(path.TempFilePath, finalFilePath);
+        }
+        catch
+        {
+            if (entry != null) CompleteFinalization(entry.RecordingId);
+            throw;
+        }
+        return ValueTask.FromResult(committedPath);
     }
 
     /// <summary>

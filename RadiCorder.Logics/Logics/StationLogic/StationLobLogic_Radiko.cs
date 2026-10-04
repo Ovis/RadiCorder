@@ -30,18 +30,18 @@ namespace RadiCorder.Logics.Logics.StationLogic
 
 
 
-        public async ValueTask UpsertRadikoStationDefinitionAsync()
+        public async ValueTask UpsertRadikoStationDefinitionAsync(CancellationToken cancellationToken = default)
         {
             // クライアントから放送局情報を取得
-            var radikoStationList = await radikoApiClient.GetRadikoStationsAsync();
-            if (radikoStationList.Count == 0)
+            var radikoStationList = await radikoApiClient.GetRadikoStationsAsync(cancellationToken);
+            if (radikoStationList.Count == 0 || radikoStationList.Any(x => string.IsNullOrWhiteSpace(x.StationId)))
             {
-                throw new DomainException("radiko放送局情報が空のため同期を中止しました。");
+                throw new DomainException("radiko放送局情報が空または局IDが欠落しているため同期を中止しました。");
             }
 
             try
             {
-                await stationRepository.UpsertRadikoStationsAsync(radikoStationList);
+                await stationRepository.UpsertRadikoStationsAsync(radikoStationList, cancellationToken);
 
                 // 放送局情報をキャッシュに保持
                 config.UpdateRadikoStationDic(radikoStationList);

@@ -13,6 +13,23 @@ namespace RadiCorder.Logics.Tests.LogicTest;
 /// </summary>
 public class MediaTranscodeServiceTests
 {
+    [Test]
+    public async Task RecordAsync_取得計画に従いAAC以外の入力をAACへ変換する()
+    {
+        var ffmpeg = new Mock<IFfmpegService>();
+        string? arguments = null;
+        ffmpeg.Setup(x => x.RunProcessAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, int, string, CancellationToken>((args, _, _, _) => arguments = args).ReturnsAsync(true);
+        var service = new MediaTranscodeService(Mock.Of<ILogger<MediaTranscodeService>>(), ffmpeg.Object, CreateConfigMock().Object);
+        var source = new RecordingSourceResult("https://example.test/audio.mp3", new Dictionary<string, string>(), CreateProgramInfo(), new RecordingOptions(RadioServiceKind.Other, false, 0, 0))
+        {
+            AcquisitionPlan = new(RecordingAcquisitionPlan.Archive, RecordingAudioOutput.EncodeAac)
+        };
+        Assert.That(await service.RecordAsync(source, new MediaPath("temp.m4a", "final.m4a", "final.m4a")), Is.True);
+        Assert.That(arguments, Does.Contain(" -acodec aac "));
+        Assert.That(arguments, Does.Not.Contain("aac_adtstoasc"));
+    }
+
     /// <summary>
     /// タイムフリー録音はradiko以外は失敗
     /// </summary>

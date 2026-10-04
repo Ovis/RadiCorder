@@ -1,4 +1,5 @@
 using System.Globalization;
+using RadiCorder.Logics.BackgroundServices;
 using Microsoft.AspNetCore.Http.HttpResults;
 using RadiCorder.Features.Shared.Models;
 using RadiCorder.Logics.Context;
@@ -320,37 +321,14 @@ public static class ProgramEndpoints
     /// <summary>
     /// 番組表更新ジョブを起動する。
     /// </summary>
-    private static async Task<Results<Ok<ApiResponse<EmptyData?>>, BadRequest<ApiResponse<EmptyData?>>>> HandleUpdateProgramsAsync(
-        ILogger<ProgramEndpointsMarker> logger,
-        IServiceScopeFactory serviceScopeFactory)
+    private static Task<Results<Ok<ApiResponse<EmptyData?>>, BadRequest<ApiResponse<EmptyData?>>>> HandleUpdateProgramsAsync(
+        ProgramUpdateQueue programUpdateQueue)
     {
-        try
-        {
-            // API は即時応答し、番組表更新本体は独立スコープでバックグラウンド実行する。
-            // スコープを作り直して、リクエスト終了後の破棄済み DbContext 参照を防ぐ。
-            _ = Task.Run(
-                async () =>
-                {
-                    try
-                    {
-                        using var scope = serviceScopeFactory.CreateScope();
-                        var programUpdateRunner = scope.ServiceProvider.GetRequiredService<ProgramUpdateRunner>();
-                        await programUpdateRunner.ExecuteAsync("manual");
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.ZLogError(ex, $"番組表更新バックグラウンド実行でエラーが発生しました。");
-                    }
-                });
-        }
-        catch (Exception ex)
-        {
-            logger.ZLogError(ex, $"番組表更新処理の起動に失敗しました。");
-            return TypedResults.BadRequest(ApiResponse.Fail("番組表更新ジョブの起動に失敗しました。"));
-        }
-
-        return TypedResults.Ok(ApiResponse.Ok("番組表更新処理を実行中です。通常数分で更新が完了します。"));
+        programUpdateQueue.Enqueue("manual");
+        return Task.FromResult<Results<Ok<ApiResponse<EmptyData?>>, BadRequest<ApiResponse<EmptyData?>>>>(
+            TypedResults.Ok(ApiResponse.Ok("番組表更新処理を実行中です。通常数分で更新が完了します。")));
     }
+
 
     /// <summary>
     /// 番組表更新状態を取得する。

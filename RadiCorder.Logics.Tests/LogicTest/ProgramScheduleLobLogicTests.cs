@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Moq;
-using System.Reflection;
 using RadiCorder.Logics.Domain.Notification;
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Errors;
@@ -653,7 +652,7 @@ public class ProgramScheduleLobLogicTests
     }
 
     [Test]
-    public void UpsertDailyProgramDataAsync_必須項目不足は更新を中止して既存データを保持する()
+    public async Task SynchronizeRadiruProgramsAsync_必須項目不足は更新を中止して既存データを保持する()
     {
         var (logic, repoMock, _, _, radiruApiClient) = CreateTargetWithClients();
         var now = DateTimeOffset.Now;
@@ -685,17 +684,11 @@ public class ProgramScheduleLobLogicTests
             .Callback<IEnumerable<NhkRadiruProgram>, CancellationToken>((entries, _) => saved = entries.ToList())
             .Returns(ValueTask.CompletedTask);
 
-        var method = typeof(ProgramScheduleLobLogic).GetMethod(
-            "UpsertDailyProgramDataAsync",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.That(method, Is.Not.Null);
-
-        var invoked = method!.Invoke(
-            logic,
-            ["130", "r1", now]);
-
-        Assert.ThrowsAsync<DomainException>(async () => await (ValueTask<bool>)invoked!);
+        radiruApiClient.AreaServices = [("130", "r1")];
+        var report = await logic.SynchronizeRadiruProgramsAsync(default);
+        Assert.That(report.IsSuccess, Is.False);
+        Assert.That(report.Failures, Has.Count.EqualTo(15));
+        Assert.That(report.Failures.All(x => x.Error is DomainException), Is.True);
         Assert.That(saved, Is.Null);
     }
 

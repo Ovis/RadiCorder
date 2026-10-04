@@ -116,9 +116,6 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
         }
 
 
-        private async ValueTask<bool> UpsertDailyProgramDataAsync(string areaId, string serviceId, DateTimeOffset dt)
-            => await UpsertDailyProgramDataCoreAsync(areaId, serviceId, dt, default);
-
         private async ValueTask<bool> UpsertDailyProgramDataCoreAsync(string areaId, string serviceId, DateTimeOffset dt, CancellationToken cancellationToken)
         {
             var programList = await radiruApiClient.GetDailyProgramsAsync(areaId, serviceId, dt, cancellationToken);

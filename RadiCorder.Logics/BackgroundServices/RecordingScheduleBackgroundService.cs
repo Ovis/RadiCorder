@@ -225,25 +225,4 @@ public class RecordingScheduleBackgroundService(
     }
 
 
-    /// <summary>
-    /// 準備開始時刻を UTC で算出する。
-    /// </summary>
-    private DateTimeOffset ResolvePrepareStartUtc(ScheduleJob job)
-    {
-        var fireAtUtc = ResolveFireAtUtc(job);
-        return fireAtUtc - RecordingScheduleTiming.PreparingLeadTime;
-    }
-
-    /// <summary>
-    /// 録音開始時刻を UTC で算出する。
-    /// </summary>
-    private DateTimeOffset ResolveFireAtUtc(ScheduleJob job)
-    {
-        var startDelay = job.StartDelay ?? appConfigurationService.RecordStartDuration;
-        var nowUtc = DateTimeOffset.UtcNow;
-        return RecordingScheduleTiming.ResolveFireAtUtc(
-            job.RecordingType, job.StartDateTime, job.EndDateTime, startDelay, nowUtc)
-            ?? nowUtc;
-    }
-
 }

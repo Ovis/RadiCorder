@@ -1,0 +1,5 @@
+<!-- 2026-10-04の実API応答から、時刻補正に必要な項目だけを抜粋。 -->
+<radiko><station id="ABC"><progs>
+  <prog id="13991035" ft="20261006030000" to="20261006030000" dur="0"><title>Ｒ→９３３</title><ts_in_ng>0</ts_in_ng></prog>
+  <prog id="13991036" ft="20261006042000" to="20261006043500" dur="900"><title>今旬！いいもの百貨店</title><ts_in_ng>0</ts_in_ng></prog>
+</progs></station></radiko>

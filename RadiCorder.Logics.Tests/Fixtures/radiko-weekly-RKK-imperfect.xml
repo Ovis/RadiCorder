@@ -1,0 +1,5 @@
+<!-- 2026-10-04の実API応答から、不正な終了日と後続番組を抜粋。 -->
+<radiko><station id="RKK"><progs>
+  <prog id="14007535" ft="20261005041000" to="20261004051000" dur="-82800"><title>明日への扉／栄光のレジェンド</title><ts_in_ng>0</ts_in_ng></prog>
+  <prog id="13996615" ft="20261005051000" to="20261005051500" dur="300"><title>心のともしび</title><ts_in_ng>0</ts_in_ng></prog>
+</progs></station></radiko>

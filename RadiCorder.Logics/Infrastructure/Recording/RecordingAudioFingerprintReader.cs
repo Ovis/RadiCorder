@@ -56,6 +56,7 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
             cache[recording.RecordingId] = bins;
             return bins;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             logger.ZLogWarning(ex, $"類似抽出: 音声指紋化に失敗 recordingId={recording.RecordingId}");
@@ -94,12 +95,24 @@ public class RecordingAudioFingerprintReader(ILogger logger, IAppConfigurationSe
 
         process.Start();
 
-        var stdOutTask = ReadAllBytesAsync(process.StandardOutput.BaseStream, cancellationToken);
-        var stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(120));
-
-        await process.WaitForExitAsync(timeoutCts.Token);
+        var stdOutTask = ReadAllBytesAsync(process.StandardOutput.BaseStream, CancellationToken.None).AsTask();
+        var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) when (process.HasExited) { }
+                await process.WaitForExitAsync(CancellationToken.None);
+            }
+            await Task.WhenAll(stdOutTask, stdErrTask);
+        }
         var stdOut = await stdOutTask;
         var stdErr = await stdErrTask;
 

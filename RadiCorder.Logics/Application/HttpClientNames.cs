@@ -5,6 +5,7 @@ namespace RadiCorder.Logics.Application;
 /// </summary>
 public static class HttpClientNames
 {
+    public const string RadikoStreaming = "radikoStreamingClient";
     public const string Radiko = "radikoClient";
     public const string Radiru = "radiruClient";
     public const string Webhook = "webhookClient";

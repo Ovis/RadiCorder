@@ -72,6 +72,13 @@ public static class LogicServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
+        services.AddHttpClient(HttpClientNames.RadikoStreaming).ConfigurePrimaryHttpMessageHandler(() =>
+            new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.Brotli | DecompressionMethods.GZip | DecompressionMethods.Deflate
+            }).ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHttpClient(HttpClientNames.Radiru).ConfigurePrimaryHttpMessageHandler(() =>
         {
             var handler = new HttpClientHandler

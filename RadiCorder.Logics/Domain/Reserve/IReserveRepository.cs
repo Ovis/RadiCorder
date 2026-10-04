@@ -1,5 +1,6 @@
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.RdbContext;
+using RadiCorder.Logics.Models.Enums;
 
 namespace RadiCorder.Logics.Domain.Reserve;
 
@@ -24,6 +25,12 @@ public interface IReserveRepository
     ValueTask<ScheduleJob?> GetScheduleJobByIdAsync(Ulid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 状態変更の判定には、追跡済みの古い値ではなく現在の保存値を使う。
+    /// </summary>
+    ValueTask<ScheduleJob?> GetScheduleJobSnapshotAsync(Ulid id, CancellationToken cancellationToken = default)
+        => GetScheduleJobByIdAsync(id, cancellationToken);
+
+    /// <summary>
     /// 番組IDで録音予約を取得する
     /// </summary>
     ValueTask<ScheduleJob?> GetScheduleJobByProgramIdAsync(string programId, CancellationToken cancellationToken = default);
@@ -43,6 +50,29 @@ public interface IReserveRepository
     /// 録音予約を更新する
     /// </summary>
     ValueTask UpdateScheduleJobAsync(ScheduleJob job, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 実行時刻・状態を上書きせず、現在有効な予約だけを無効化する。
+    /// </summary>
+    async ValueTask<bool> TryDisableScheduleJobAsync(Ulid id, CancellationToken cancellationToken = default)
+    {
+        var job = await GetScheduleJobByIdAsync(id, cancellationToken);
+        if (job == null || !job.IsEnabled) return false;
+        job.IsEnabled = false;
+        await UpdateScheduleJobAsync(job, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 読取後に状態が変わっていない無効な予約だけを、明示的に再有効化する。
+    /// </summary>
+    async ValueTask<bool> TryReactivateScheduleJobAsync(ScheduleJob job, ScheduleJobState expectedState, CancellationToken cancellationToken = default)
+    {
+        var current = await GetScheduleJobByIdAsync(job.Id, cancellationToken);
+        if (current == null || current.IsEnabled || current.State != expectedState) return false;
+        await UpdateScheduleJobAsync(job, cancellationToken);
+        return true;
+    }
 
     /// <summary>
     /// マージン更新対象の予約を取得する

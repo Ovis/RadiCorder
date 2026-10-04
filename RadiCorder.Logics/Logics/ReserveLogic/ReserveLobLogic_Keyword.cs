@@ -272,25 +272,29 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
         {
             try
             {
-                var scheduleJob = await reserveRepository.GetScheduleJobByIdAsync(id);
+                var scheduleJob = await reserveRepository.GetScheduleJobSnapshotAsync(id);
 
                 if (scheduleJob == null)
                 {
                     return (false, new DomainException("指定されたIDの予約データが見つかりません。"));
                 }
 
-                scheduleJob.IsEnabled = !scheduleJob.IsEnabled;
-
-                await reserveRepository.UpdateScheduleJobAsync(scheduleJob);
-
-
                 if (scheduleJob.IsEnabled)
                 {
-                    await recordJobLobLogic.SetScheduleJobAsync(scheduleJob);
+                    if (!await reserveRepository.TryDisableScheduleJobAsync(id))
+                        throw new DomainException("録音予約の状態が変わったため無効化できませんでした。");
+                    await recordJobLobLogic.CancelScheduleJobAndWaitAsync(id);
                 }
                 else
                 {
-                    await recordJobLobLogic.DeleteScheduleJobAsync(scheduleJob.Id);
+                    await recordJobLobLogic.CancelScheduleJobAndWaitAsync(id);
+                    scheduleJob = await reserveRepository.GetScheduleJobSnapshotAsync(id)
+                        ?? throw new DomainException("録音予約が削除されています。");
+                    var expectedState = scheduleJob.State;
+                    recordJobLobLogic.PrepareForReactivation(scheduleJob);
+                    if (!await reserveRepository.TryReactivateScheduleJobAsync(scheduleJob, expectedState))
+                        throw new DomainException("録音予約の状態が変わったため再有効化できませんでした。");
+                    recordJobLobLogic.NotifyScheduleChanged();
                 }
 
                 await PublishReserveScheduleChangedSafeAsync();
@@ -804,5 +808,3 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
     }
 
 }
-
-

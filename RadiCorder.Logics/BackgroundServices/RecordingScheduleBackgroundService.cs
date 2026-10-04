@@ -147,21 +147,24 @@ public class RecordingScheduleBackgroundService(
         {
             logger.ZLogDebug($"録音スケジューラが実行対象ジョブを検出しました。 jobId={jobId}");
 
-            var updated = await dbContext.ScheduleJob
+            // 前の実行が終了する前にPendingへ戻っても、Queuedだけを残さない。
+            if (!RunningJobMap.TryAdd(jobId, 0)) continue;
+
+            int updated;
+            try
+            {
+                updated = await dbContext.ScheduleJob
                 .Where(x => x.Id == jobId && x.State == ScheduleJobState.Pending && x.IsEnabled)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.State, ScheduleJobState.Queued)
                     .SetProperty(x => x.QueuedAtUtc, nowUtc), cancellationToken);
+            }
+            catch { RunningJobMap.TryRemove(jobId, out _); throw; }
 
             if (updated != 1)
             {
                 logger.ZLogDebug($"録音スケジューラがジョブのキュー投入をスキップしました。 jobId={jobId} reason=state_changed");
-                continue;
-            }
-
-            if (!RunningJobMap.TryAdd(jobId, 0))
-            {
-                logger.ZLogDebug($"録音スケジューラがジョブのキュー投入をスキップしました。 jobId={jobId} reason=already_running");
+                RunningJobMap.TryRemove(jobId, out _);
                 continue;
             }
 

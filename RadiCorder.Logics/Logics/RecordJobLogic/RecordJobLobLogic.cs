@@ -8,6 +8,7 @@ using RadiCorder.Logics.Logics.RecordingLogic;
 using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.RdbContext;
 using RadiCorder.Logics.Services;
+using RadiCorder.Logics.Infrastructure.Recording;
 using ZLogger;
 
 namespace RadiCorder.Logics.Logics.RecordJobLogic;
@@ -46,7 +47,7 @@ public class RecordJobLobLogic(
             var dbContext = scope.ServiceProvider.GetRequiredService<RadioDbContext>();
 
             // 既存行を Pending に戻し、UTC 基準の実行時刻を再計算する。
-            await dbContext.ScheduleJob
+            var updated = await dbContext.ScheduleJob
                 .Where(x => x.Id == job.Id && x.State == ScheduleJobState.Pending)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.PrepareStartUtc, prepareStartUtc)
@@ -57,6 +58,8 @@ public class RecordJobLobLogic(
                     .SetProperty(x => x.LastErrorCode, ScheduleJobErrorCode.None)
                     .SetProperty(x => x.LastErrorDetail, (string?)null));
 
+            if (updated != 1) return (false, new DomainException("録音予約の状態が変わったため初期化できませんでした。"));
+
             PublishWakeupSafe(recordingScheduleWakeup);
 
             return (true, null);
@@ -66,6 +69,45 @@ public class RecordJobLobLogic(
             logger.ZLogError(ex, $"録音予約ジョブ初期化処理で失敗");
             return (false, ex);
         }
+    }
+
+    /// <summary>
+    /// 明示的な再有効化のために時刻と状態を準備する。起動時の初期化とは区別する。
+    /// </summary>
+    public void PrepareForReactivation(ScheduleJob job)
+    {
+        if (job.IsEnabled || job.State is ScheduleJobState.Completed or ScheduleJobState.Finalizing)
+            throw new DomainException("完了済みまたは確定待ちの録音予約は再有効化できません。");
+        if (!string.IsNullOrWhiteSpace(appConfig.TemporaryFileSaveDir))
+        {
+            var journal = new RecordingFinalizationJournal(appConfig);
+            foreach (var file in journal.GetPendingFiles())
+            {
+                try
+                {
+                    if (journal.Read(file).ScheduleJobId == job.Id.ToString())
+                        throw new DomainException("保存済み録音の確定待ち情報があるため再有効化できません。");
+                }
+                catch (DomainException) { throw; }
+                catch (Exception ex) { throw new DomainException("録音確定の情報を確認できないため再有効化できません。", ex); }
+            }
+        }
+        job.PrepareStartUtc = ResolveFireAtUtc(job) - RecordingScheduleTiming.PreparingLeadTime;
+        job.State = ScheduleJobState.Pending;
+        job.IsEnabled = true;
+        job.QueuedAtUtc = null;
+        job.ActualStartUtc = null;
+        job.CompletedUtc = null;
+        job.LastErrorCode = ScheduleJobErrorCode.None;
+        job.LastErrorDetail = null;
+    }
+
+    public void NotifyScheduleChanged() => PublishWakeupSafe(recordingScheduleWakeup);
+
+    public async ValueTask CancelScheduleJobAndWaitAsync(Ulid jobId)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await RecordingCancellationRegistry.CancelAndWaitAsync(jobId.ToString(), deadline.Token);
     }
 
     private void PublishWakeupSafe(IRecordingScheduleWakeup? wakeup)

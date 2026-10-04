@@ -9,9 +9,11 @@ import { AvailabilityTimeFree, RecordingType, RadioServiceKind } from './define.
 import type { ProgramInformationRequestContract } from './openapi-contract.js';
 import { sanitizeHtml } from './utils.js';
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
+import { registerPage } from './page-navigation.js';
 
 const reservedRecordingKeys = new Set<string>();
 const showProgramToast = createInlineToast('program-result-toast', 'program-result-toast-message');
+let activePageSignal: AbortSignal | null = null;
 
 async function reserveProgramWithToast(
     programId: string,
@@ -59,14 +61,22 @@ async function reserveProgramWithToast(
     button.classList.remove('opacity-70');
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('radikoprogram.js', async (signal) => {
+    activePageSignal = signal;
+    reservedRecordingKeys.clear();
     wireInlineToastClose('program-result-toast-close', 'program-result-toast');
 
     const stationSelect = document.getElementById('stationSelect') as HTMLSelectElement;
     const dateSelect = document.getElementById('dateSelect') as HTMLSelectElement;
 
     await loadStationList();
+    if (signal.aborted) {
+        return;
+    }
     await populateDateSelect();
+    if (signal.aborted) {
+        return;
+    }
 
     stationSelect.addEventListener('change', async () => {
 
@@ -92,8 +102,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadStationList(): Promise<void> {
+    const signal = activePageSignal;
     const response = await fetch(API_ENDPOINTS.STATION_LIST_RADIKO);
     const result = await response.json() as ApiResponseContract<StationDataResponseContract>;
+    if (signal?.aborted) {
+        return;
+    }
     const stationsByRegion = result.data;
     const stationSelect = document.getElementById('stationSelect') as HTMLSelectElement;
 
@@ -112,8 +126,12 @@ async function loadStationList(): Promise<void> {
 }
 
 async function populateDateSelect(): Promise<void> {
+    const signal = activePageSignal;
     const response = await fetch(API_ENDPOINTS.RADIO_DATE);
     const result = await response.json() as ApiResponseContract<DateElement[]>;
+    if (signal?.aborted) {
+        return;
+    }
     const dates = result.data ?? [];
     const dateSelect = document.getElementById('dateSelect') as HTMLSelectElement;
 
@@ -131,6 +149,7 @@ async function populateDateSelect(): Promise<void> {
 }
 
 async function loadPrograms(): Promise<void> {
+    const signal = activePageSignal;
     const stationSelect = document.getElementById('stationSelect') as HTMLSelectElement;
     const dateSelect = document.getElementById('dateSelect') as HTMLSelectElement;
     const stationId = stationSelect.value;
@@ -139,6 +158,9 @@ async function loadPrograms(): Promise<void> {
     if (stationId && date) {
         const response = await fetch(`${API_ENDPOINTS.PROGRAM_LIST_RADIKO}?d=${date}&s=${stationId}`);
         const result = await response.json() as ApiResponseContract<Program[]>;
+        if (signal?.aborted) {
+            return;
+        }
         const programs = result.data ?? [];
         renderPrograms(programs);
     } else {

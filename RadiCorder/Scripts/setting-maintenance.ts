@@ -17,7 +17,7 @@ type AppOperationEventDetail = {
     message: string;
 };
 
-export const initSettingMaintenance = (verificationToken: string, showToast: ShowToastFn): void => {
+export const initSettingMaintenance = (verificationToken: string, showToast: ShowToastFn): (() => void) | undefined => {
     const panel = document.getElementById('setting-panel-maintenance') as HTMLDivElement | null;
     if (!panel) {
         return;
@@ -140,7 +140,7 @@ export const initSettingMaintenance = (verificationToken: string, showToast: Sho
     /**
      * 他画面/他タブのメンテナンス実行完了を受けて一覧を再同期する
      */
-    window.addEventListener('radicorder:operation-event', (event: Event) => {
+    const onOperationEvent = (event: Event) => {
         const customEvent = event as CustomEvent<AppOperationEventDetail>;
         const detail = customEvent.detail;
         if (!detail || detail.category !== 'maintenance' || !detail.succeeded) {
@@ -159,7 +159,8 @@ export const initSettingMaintenance = (verificationToken: string, showToast: Sho
         void scanMaintenance(false, true).catch(() => {
             // 再同期失敗時は明示トーストを追加しない
         });
-    });
+    };
+    window.addEventListener('radicorder:operation-event', onOperationEvent);
 
     maintenanceSelectAll.addEventListener('change', () => {
         const checked = maintenanceSelectAll.checked;
@@ -262,5 +263,6 @@ export const initSettingMaintenance = (verificationToken: string, showToast: Sho
     });
 
     renderMaintenance();
+    return () => window.removeEventListener('radicorder:operation-event', onOperationEvent);
 };
 

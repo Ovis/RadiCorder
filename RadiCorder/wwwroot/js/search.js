@@ -8,11 +8,11 @@ import { clearMultiSelect, renderSelectedTagChips, enableTouchLikeMultiSelect } 
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
 import { setOverlayLoading } from './loading.js';
 import { configurePlayer, playPlayerSource } from './player-controller.js';
+import { registerPage } from './page-navigation.js';
 const reservedRecordingKeys = new Set();
 let availableTags = [];
 const normalizeTagName = (value) => value.trim().toLocaleLowerCase();
 const showSearchToast = createInlineToast('search-result-toast', 'search-result-toast-message');
-configurePlayer({ onError: (message) => showSearchToast(message, false) });
 function createTemplateTokenHelp(sectionLabel, targetInputId) {
     const wrapper = document.createElement('div');
     wrapper.className = 'mt-2';
@@ -146,16 +146,30 @@ async function playProgramWithToast(program) {
         showSearchToast('再生に失敗しました。', false);
     }
 }
-document.querySelectorAll('.modal-closeProcess').forEach(elm => {
-    elm.addEventListener('click', closeModal);
-});
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('search.js', async (signal) => {
+    reservedRecordingKeys.clear();
+    configurePlayer({ onError: (message) => showSearchToast(message, false) });
+    document.querySelectorAll('.modal-closeProcess').forEach(elm => {
+        elm.addEventListener('click', closeModal);
+    });
+    bindSearchButtons();
     const radikoStationGroupsElm = document.getElementById('radikoStationGroups');
     const radiruStationGroupsElm = document.getElementById('radiruStationGroups');
     wireInlineToastClose('search-result-toast-close', 'search-result-toast');
-    radikoStationGroupsElm.appendChild(await generateStationList(RadioServiceKind.Radiko));
-    radiruStationGroupsElm.appendChild(await generateStationList(RadioServiceKind.Radiru));
+    const radikoStations = await generateStationList(RadioServiceKind.Radiko);
+    if (signal.aborted) {
+        return;
+    }
+    radikoStationGroupsElm.appendChild(radikoStations);
+    const radiruStations = await generateStationList(RadioServiceKind.Radiru);
+    if (signal.aborted) {
+        return;
+    }
+    radiruStationGroupsElm.appendChild(radiruStations);
     availableTags = await loadTags();
+    if (signal.aborted) {
+        return;
+    }
     renderOptionCard();
 });
 async function loadTags() {
@@ -473,7 +487,11 @@ function renderOptionCard() {
     const cardElm = createCard("optionCard", cardHeaderTitle, contentElements);
     optionDivElm.appendChild(cardElm);
 }
-document.getElementById('searchButton').addEventListener('click', async function () {
+function bindSearchButtons() {
+    document.getElementById('searchButton').addEventListener('click', onSearchClick);
+    document.getElementById('recordingButton').addEventListener('click', onRecordingClick);
+}
+async function onSearchClick() {
     const searchButton = this;
     const searchLoadingOverlay = document.getElementById('searchLoadingOverlay');
     const selectedRadikoStationIds = Array.from(document.querySelectorAll('input[name="SelectedRadikoStationIds"]:checked')).map(checkbox => checkbox.value);
@@ -679,9 +697,9 @@ document.getElementById('searchButton').addEventListener('click', async function
             setOverlayLoading(searchLoadingOverlay, false);
         }
     }
-});
+}
 // 自動予約ルール追加ボタン
-document.getElementById('recordingButton').addEventListener('click', async function () {
+async function onRecordingClick() {
     const selectedRadikoStationIds = Array.from(document.querySelectorAll('input[name="SelectedRadikoStationIds"]:checked')).map(checkbox => checkbox.value);
     const selectedRadiruStationIds = Array.from(document.querySelectorAll('input[name="SelectedRadiruStationIds"]:checked')).map(checkbox => checkbox.value);
     const keyword = document.getElementById('Keyword').value;
@@ -744,5 +762,5 @@ document.getElementById('recordingButton').addEventListener('click', async funct
     catch (e) {
         showSearchToast("録音予約に失敗しました。", false);
     }
-});
+}
 //# sourceMappingURL=search.js.map

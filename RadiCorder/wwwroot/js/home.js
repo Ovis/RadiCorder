@@ -7,15 +7,19 @@ import { setTextContent, setInnerHtml, setEventListener, sanitizeHtml } from './
 import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
 import { configurePlayer, getPlayerHls, playPlayerSource, resumePlayer } from './player-controller.js';
-configurePlayer({
-    createControls: (audio, state) => state?.kind === 'live'
-        ? createPlayerJumpControls(audio)
-        : createStandardPlayerJumpControls(audio)
-});
-document.addEventListener('DOMContentLoaded', async () => {
+import { registerPage } from './page-navigation.js';
+registerPage('home.js', async (signal) => {
+    configurePlayer({
+        createControls: (audio, state) => state?.kind === 'live'
+            ? createPlayerJumpControls(audio)
+            : createStandardPlayerJumpControls(audio)
+    });
     try {
         const response = await fetch(API_ENDPOINTS.PROGRAM_NOW);
         const result = await response.json();
+        if (signal.aborted) {
+            return;
+        }
         const data = result.data;
         const template = document.getElementById('program-card-template');
         const container = document.getElementById('programs-container');

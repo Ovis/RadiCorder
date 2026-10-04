@@ -9,9 +9,10 @@ import { API_ENDPOINTS } from './const.js';
 import type { DuplicateDetectionRunRequestContract, RecordingBulkDeleteRequestContract } from './openapi-contract.js';
 import { showConfirmDialog } from './feedback.js';
 import { escapeHtml } from './utils.js';
-import { playerPlaybackRateOptions, resetPlaybackRate } from './player-rate-control.js';
+import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
-import type { HlsInstance, HlsWindow } from './hls-types.js';
+import { configurePlayer, playPlayerSource, stopPlayer } from './player-controller.js';
+import { registerPage } from './page-navigation.js';
 import type { SignalRHubConnection, SignalRWindow } from './signalr-types.js';
 
 type DuplicateGroupMember = RecordedDuplicateSide & {
@@ -29,7 +30,7 @@ type DuplicateGroup = {
 const playerStartOffsetMinutesOptions = [0, 1, 2, 3, 5, 10];
 const playerStartOffsetStorageKey = 'radicorder-player-start-offset-minutes';
 
-document.addEventListener('DOMContentLoaded', () => {
+registerPage('recorded-duplicates.js', (signal) => {
     const verificationToken = (document.getElementById('VerificationToken') as HTMLInputElement | null)?.value ?? '';
     const runButton = document.getElementById('duplicate-run-btn') as HTMLButtonElement | null;
     const lookbackDaysSelect = document.getElementById('duplicate-lookback-days') as HTMLSelectElement | null;
@@ -49,9 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearSelectionButton = document.getElementById('duplicate-clear-selection-btn') as HTMLButtonElement | null;
     const bulkDeleteButton = document.getElementById('duplicate-bulk-delete-btn') as HTMLButtonElement | null;
     const selectedCount = document.getElementById('duplicate-selected-count') as HTMLSpanElement | null;
-    const footer = document.getElementById('audio-player') as HTMLElement | null;
 
-    if (!runButton || !lookbackDaysSelect || !maxGroupsSelect || !phase2ModeSelect || !clusterWindowHoursSelect || !startOffsetMinutesSelect || !loading || !errorBox || !statusBox || !lastStarted || !lastCompleted || !lastMessage || !tableBody || !selectAllCheckbox || !selectAllButton || !clearSelectionButton || !bulkDeleteButton || !selectedCount || !footer) {
+    if (!runButton || !lookbackDaysSelect || !maxGroupsSelect || !phase2ModeSelect || !clusterWindowHoursSelect || !startOffsetMinutesSelect || !loading || !errorBox || !statusBox || !lastStarted || !lastCompleted || !lastMessage || !tableBody || !selectAllCheckbox || !selectAllButton || !clearSelectionButton || !bulkDeleteButton || !selectedCount) {
         return;
     }
 
@@ -59,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let candidates: RecordedDuplicateCandidate[] = [];
     let groups: DuplicateGroup[] = [];
     const selectedRecordingIds = new Set<string>();
-    let currentHls: HlsInstance | null = null;
     let currentPlayingRecordingId: string | null = null;
     let pollTimer: number | null = null;
     let duplicateHubConnection: SignalRHubConnection | null = null;
@@ -91,27 +90,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const stopDuplicatePlayback = (clearFooter = true): void => {
-        const audio = document.getElementById('duplicate-audio-player') as HTMLAudioElement | null;
-        if (audio) {
-            audio.pause();
-            audio.removeAttribute('src');
-            audio.load();
+    configurePlayer({
+        createControls: createPlayerJumpControls,
+        onStateChanged: (state) => {
+            currentPlayingRecordingId = state?.recordId ?? null;
+            syncDuplicatePlayButtons();
         }
-
-        if (currentHls) {
-            currentHls.destroy();
-            currentHls = null;
-        }
-
-        currentPlayingRecordingId = null;
-
-        if (clearFooter) {
-            footer.innerHTML = '';
-        }
-
-        syncDuplicatePlayButtons();
-    };
+    });
 
     const restoreStartOffsetSelection = (): void => {
         const current = getPlayerStartOffsetMinutes();
@@ -168,78 +153,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${m}分${s}秒`;
     };
 
-    const getOrCreatePlayer = (): HTMLAudioElement => {
-        let audio = document.getElementById('duplicate-audio-player') as HTMLAudioElement | null;
-        if (!audio) {
-            footer.innerHTML = '';
-            const container = document.createElement('div');
-            container.className = 'player-container';
-
-            const row = document.createElement('div');
-            row.className = 'player-main-row';
-
-            audio = document.createElement('audio');
-            audio.id = 'duplicate-audio-player';
-            audio.controls = true;
-            audio.style.width = '100%';
-            audio.addEventListener('ended', () => {
-                currentPlayingRecordingId = null;
-                syncDuplicatePlayButtons();
-            });
-
-            const close = document.createElement('button');
-            close.type = 'button';
-            close.className = 'player-close-button';
-            close.setAttribute('aria-label', 'プレイヤーを閉じる');
-            close.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
-            close.addEventListener('click', () => {
-                stopDuplicatePlayback();
-            });
-
-            row.appendChild(audio);
-            row.appendChild(close);
-            container.appendChild(row);
-            container.appendChild(createPlayerJumpControls(audio));
-            footer.appendChild(container);
-        }
-
-        return audio;
-    };
-
     const playRecording = (recordId: string): void => {
         if (isCurrentDuplicateRecordingPlaying(recordId)) {
-            stopDuplicatePlayback();
+            stopPlayer();
             return;
         }
-
-        const audio = getOrCreatePlayer();
-        const m3u8Url = `/api/recordings/play/${recordId}`;
-        const startOffsetSeconds = getPlayerStartOffsetSeconds();
-        currentPlayingRecordingId = recordId;
-        syncDuplicatePlayButtons();
-
-        if (currentHls) {
-            currentHls.destroy();
-            currentHls = null;
-        }
-
-        const hlsConstructor = (window as HlsWindow<HlsInstance>).Hls;
-        if (hlsConstructor?.isSupported()) {
-            const hls = new hlsConstructor();
-            resetPlaybackRate(audio);
-            currentHls = hls;
-            hls.loadSource(m3u8Url);
-            hls.attachMedia(audio);
-            hls.on(hlsConstructor.Events.MANIFEST_PARSED, () => {
-                void playAudioWithStartOffset(audio, startOffsetSeconds);
-            });
-        } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-            resetPlaybackRate(audio);
-            audio.src = m3u8Url;
-            audio.onloadedmetadata = () => {
-                void playAudioWithStartOffset(audio, startOffsetSeconds);
-            };
-        }
+        const recording = groups.flatMap(group => group.members).find(member => member.recordingId === recordId);
+        void playPlayerSource({
+            sourceUrl: `/api/recordings/play/${recordId}`,
+            kind: 'recording',
+            recordId,
+            title: recording?.title ?? null,
+            currentTime: getPlayerStartOffsetSeconds()
+        });
     };
 
     const buildGroups = (items: RecordedDuplicateCandidate[]): DuplicateGroup[] => {
@@ -676,9 +602,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setError(message);
     });
     startPolling();
-    void initializeDuplicateDetectionHubConnectionAsync();
+    void initializeDuplicateDetectionHubConnectionAsync().then(() => {
+        if (signal.aborted) {
+            cleanup();
+        }
+    });
 
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (pollTimer !== null) {
             window.clearInterval(pollTimer);
             pollTimer = null;
@@ -687,7 +617,12 @@ document.addEventListener('DOMContentLoaded', () => {
             void duplicateHubConnection.stop();
             duplicateHubConnection = null;
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        cleanup();
+    };
 });
 
 function createPlayerJumpControls(audioElm: HTMLAudioElement): HTMLDivElement {
@@ -708,22 +643,3 @@ function getPlayerStartOffsetMinutes(): number {
 function getPlayerStartOffsetSeconds(): number {
     return getPlayerStartOffsetMinutes() * 60;
 }
-
-async function playAudioWithStartOffset(audioElm: HTMLAudioElement, startOffsetSeconds: number): Promise<void> {
-    if (startOffsetSeconds > 0) {
-        const duration = audioElm.duration;
-        let seekTo = startOffsetSeconds;
-        if (Number.isFinite(duration)) {
-            seekTo = Math.min(seekTo, Math.max(duration - 1, 0));
-        }
-
-        if (Number.isFinite(seekTo) && seekTo > 0) {
-            audioElm.currentTime = seekTo;
-        }
-    }
-
-    await audioElm.play();
-}
-
-
-

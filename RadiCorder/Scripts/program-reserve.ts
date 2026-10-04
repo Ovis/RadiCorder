@@ -5,6 +5,7 @@ import type { ReserveEntryRequestContract } from './openapi-contract.js';
 import { setTextContent, setEventListener, setInnerHtml, sanitizeHtml } from './utils.js';
 import { createInlineToast, wireInlineToastClose } from './inline-toast.js';
 import type { SignalRHubConnection, SignalRWindow } from './signalr-types.js';
+import { registerPage } from './page-navigation.js';
 
 let recordingsCache: ProgramReserve[] = [];
 type SortKey = 'title' | 'time' | 'recordingType' | 'reserveType' | 'status';
@@ -15,6 +16,7 @@ const showToast = createInlineToast('program-reserve-result-toast', 'program-res
 let reserveHubConnection: SignalRHubConnection | null = null;
 let isRealtimeReloadRunning = false;
 let hasRealtimeReloadPending = false;
+let activePageSignal: AbortSignal | null = null;
 // API由来の録音種別値を表示文字列へ変換する。
 const getRecordingTypeDisplayName = (value: string | number | null | undefined): string =>
     RecordingTypeMap[Number(value) as keyof typeof RecordingTypeMap]?.displayName ?? '未定義';
@@ -75,7 +77,11 @@ function showConfirmDialog(message: string): Promise<boolean> {
     });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+registerPage('program-reserve.js', async (signal) => {
+    activePageSignal = signal;
+    recordingsCache = [];
+    currentSortKey = 'time';
+    currentSortDirection = 'asc';
     wireInlineToastClose('program-reserve-result-toast-close', 'program-reserve-result-toast');
     const sortTitleButton = document.getElementById('sort-title') as HTMLAnchorElement | null;
     const sortTimeButton = document.getElementById('sort-start') as HTMLAnchorElement | null;
@@ -148,14 +154,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadRecordings();
+    if (signal.aborted) {
+        return;
+    }
     await initializeReserveHubConnectionAsync();
 
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (reserveHubConnection) {
             void reserveHubConnection.stop();
             reserveHubConnection = null;
         }
-    });
+    };
+    window.addEventListener('beforeunload', cleanup);
+    if (signal.aborted) {
+        cleanup();
+    }
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        cleanup();
+    };
 });
 
 /**
@@ -217,11 +234,15 @@ const initializeReserveHubConnectionAsync = async (): Promise<void> => {
 };
 
 const loadRecordings = async (): Promise<void> => {
+    const signal = activePageSignal;
     try {
         localStorage.removeItem('program-reserve-list');
 
         const response: Response = await fetch(API_ENDPOINTS.RESERVE_PROGRAM_LIST);
         const result = await response.json() as ApiResponseContract<ProgramReserve[]>;
+        if (signal?.aborted) {
+            return;
+        }
         const data: ProgramReserve[] = result.data ?? [];
         recordingsCache = data;
 

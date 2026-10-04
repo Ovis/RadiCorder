@@ -2,7 +2,8 @@ import { API_ENDPOINTS } from './const.js';
 import { showConfirmDialog } from './feedback.js';
 import { initExternalImport } from './setting-external-import.js';
 import { initSettingMaintenance } from './setting-maintenance.js';
-document.addEventListener('DOMContentLoaded', async () => {
+import { registerPage } from './page-navigation.js';
+registerPage('setting.js', async (signal) => {
     const verificationToken = document.getElementById('VerificationToken').value;
     const resultToast = document.getElementById('result-toast');
     const resultToastMessage = document.getElementById('result-toast-message');
@@ -339,7 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             event.preventDefault();
             await switchSettingTab('general');
             scrollToGeneralSection(hash, true);
-            history.replaceState(null, '', hash);
+            history.replaceState(history.state, '', hash);
         });
     });
     if (window.location.hash.startsWith('#settings-')) {
@@ -349,8 +350,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 0);
     }
     initExternalImport(verificationToken, showToast);
-    initSettingMaintenance(verificationToken, showToast);
+    const cleanupMaintenance = initSettingMaintenance(verificationToken, showToast);
+    signal.addEventListener('abort', () => cleanupMaintenance?.(), { once: true });
     await loadProgramUpdateStatusAsync();
+    if (signal.aborted) {
+        return;
+    }
     await initializeProgramUpdateHubConnectionAsync();
     tagCreateButton?.addEventListener('click', async () => {
         const name = tagCreateInput?.value.trim() ?? '';
@@ -900,6 +905,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const requestBody = { enabled };
             await postData(API_ENDPOINTS.SETTING_RESUME_PLAYBACK_ACROSS_PAGES, requestBody);
+            document.body.dataset.resumePlaybackAcrossPages = String(enabled);
+            history.scrollRestoration = enabled ? 'manual' : 'auto';
             showToast('保存しました。');
         }
         catch (error) {
@@ -1020,11 +1027,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     });
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         if (programUpdateHubConnection) {
             void programUpdateHubConnection.stop();
             programUpdateHubConnection = null;
         }
-    });
+        cleanupMaintenance?.();
+    };
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+        window.removeEventListener('beforeunload', cleanup);
+        cleanup();
+    };
 });
 //# sourceMappingURL=setting.js.map

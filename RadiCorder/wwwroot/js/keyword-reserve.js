@@ -1,6 +1,7 @@
 import { API_ENDPOINTS, getDayOfWeekShortString } from './const.js';
 import { showConfirmDialog, showGlobalToast } from './feedback.js';
 import { setTextContent, setAttribute, setEventListener } from './utils.js';
+import { registerPage } from './page-navigation.js';
 let availableTags = [];
 let keywordReserves = [];
 let draggingReserveId = null;
@@ -27,8 +28,12 @@ const normalizeKeywordReserve = (entry) => ({
     mergeTagBehavior: entry.mergeTagBehavior === undefined ? undefined : Number(entry.mergeTagBehavior)
 });
 const normalizeTagName = (value) => value.trim().toLocaleLowerCase();
-document.addEventListener('DOMContentLoaded', () => {
-    loadTags().then(() => loadRecordings());
+registerPage('keyword-reserve.js', (signal) => {
+    void loadTags().then(() => {
+        if (!signal.aborted) {
+            void loadRecordings(signal);
+        }
+    });
 });
 const loadTags = async () => {
     try {
@@ -41,10 +46,13 @@ const loadTags = async () => {
         availableTags = [];
     }
 };
-const loadRecordings = async () => {
+const loadRecordings = async (signal) => {
     try {
         const response = await fetch(API_ENDPOINTS.RESERVE_KEYWORD_LIST);
         const result = await response.json();
+        if (signal?.aborted) {
+            return;
+        }
         const data = (result.data ?? [])
             .map(normalizeKeywordReserve)
             .slice()

@@ -28,7 +28,7 @@ export type PlayerSource = {
 };
 
 const resumeWindowMs = 15 * 60 * 1000;
-const defaultDocumentTitle = document.title;
+let defaultDocumentTitle = document.title;
 let options: PlayerOptions = {};
 let currentState: PersistedPlayerState | null = null;
 let currentHls: HlsLiveInstance | null = null;
@@ -41,6 +41,11 @@ function reportError(message: string): void {
 function setTitle(title: string | null | undefined): void {
     const normalized = title?.trim();
     document.title = normalized ? `${normalized} - RadiCorder` : defaultDocumentTitle;
+}
+
+export function setPlayerPageTitle(title: string): void {
+    defaultDocumentTitle = title;
+    setTitle(currentState?.title);
 }
 
 function persist(): void {

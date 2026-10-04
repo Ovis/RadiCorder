@@ -307,18 +307,18 @@
 
         <div class="rk-panel">
             <header class="mb-3">
-                <h2 class="rk-panel-head">ページ遷移時の再生復帰</h2>
+                <h2 class="rk-panel-head">ページ移動中の再生維持</h2>
             </header>
             <div class="content">
                 <div class="rk-setting-summary">
-                    <p>再生中に別ページへ移動した場合、再生状態（再生位置・速度）を復帰します。</p>
+                    <p>アプリ内のページ移動やブラウザの戻る・進むでは、再生を止めずに続けます。再読み込みが発生した場合は再生位置・速度から復帰します。</p>
                     <p>ブラウザを閉じて開き直した場合は復帰しません。</p>
                 </div>
                 <div class="field is-grouped is-align-items-center">
                     <div class="control">
                         <label class="checkbox">
                             <input type="checkbox" id="resume-playback-across-pages" @(AppConfigurationService.ResumePlaybackAcrossPages ? "checked" : "") />
-                            ページ移動後も再生状態を引き継ぐ
+                            ページ移動中も再生を続ける
                         </label>
                     </div>
                     <div class="control">

@@ -3,7 +3,7 @@ import { applyPlaybackRate, playerPlaybackRateOptions } from './player-rate-cont
 import { clearPersistedPlayerState, readPersistedPlayerState, writePersistedPlayerState } from './player-state-store.js';
 import { showGlobalToast } from './feedback.js';
 const resumeWindowMs = 15 * 60 * 1000;
-const defaultDocumentTitle = document.title;
+let defaultDocumentTitle = document.title;
 let options = {};
 let currentState = null;
 let currentHls = null;
@@ -14,6 +14,10 @@ function reportError(message) {
 function setTitle(title) {
     const normalized = title?.trim();
     document.title = normalized ? `${normalized} - RadiCorder` : defaultDocumentTitle;
+}
+export function setPlayerPageTitle(title) {
+    defaultDocumentTitle = title;
+    setTitle(currentState?.title);
 }
 function persist() {
     const audio = getPlayerAudio();

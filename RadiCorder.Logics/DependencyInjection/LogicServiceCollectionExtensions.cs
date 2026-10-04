@@ -138,6 +138,7 @@ public static class LogicServiceCollectionExtensions
     {
         services.AddSingleton<IProgramUpdateStatusService, ProgramUpdateStatusService>();
         services.AddSingleton<ProgramUpdateQueue>();
+        services.AddSingleton<DuplicateDetectionQueue>();
         services.AddScoped<IRadioAppContext, RadioAppContext>();
         services.AddScoped<IStationRepository, StationRepository>();
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
@@ -207,6 +208,7 @@ public static class LogicServiceCollectionExtensions
         services.AddHostedService<ClockSkewMonitorBackgroundService>();
         services.AddHostedService<ReleaseCheckBackgroundService>();
         services.AddHostedService<DuplicateDetectionScheduleBackgroundService>();
+        services.AddHostedService<DuplicateDetectionWorker>();
         return services;
     }
 }

@@ -104,6 +104,7 @@ public class RadiruRecordingSource(
             Headers: new Dictionary<string, string>(),
             ProgramInfo: programInfo,
             Options: options,
-            RequestStationIdOverride: null);
+            RequestStationIdOverride: null)
+        { AcquisitionPlan = new(isOnDemand ? RecordingAcquisitionPlan.Archive : RecordingAcquisitionPlan.Live, FastStart: true) };
     }
 }

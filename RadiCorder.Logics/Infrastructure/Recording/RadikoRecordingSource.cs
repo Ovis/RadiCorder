@@ -150,7 +150,8 @@ public class RadikoRecordingSource(
             Headers: headers,
             ProgramInfo: programInfo,
             Options: options,
-            RequestStationIdOverride: requestStationId);
+            RequestStationIdOverride: requestStationId)
+        { AcquisitionPlan = new(command.IsTimeFree ? RecordingAcquisitionPlan.RadikoTimeFree : RecordingAcquisitionPlan.Live, TailCompensationSeconds: 10) };
     }
 
     /// <summary>

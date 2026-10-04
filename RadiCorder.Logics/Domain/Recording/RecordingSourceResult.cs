@@ -13,4 +13,7 @@ public record RecordingSourceResult(
     IReadOnlyDictionary<string, string> Headers,
     ProgramRecordingInfo ProgramInfo,
     RecordingOptions Options,
-    string? RequestStationIdOverride = null);
+    string? RequestStationIdOverride = null)
+{
+    public RecordingAcquisitionPlan? AcquisitionPlan { get; init; }
+}

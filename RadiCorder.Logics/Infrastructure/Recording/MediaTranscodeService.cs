@@ -1,3 +1,5 @@
+using RadiCorder.Logics.Providers;
+using RadiCorder.Logics.Providers.Radiko;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
@@ -5,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Application;
 using RadiCorder.Logics.Domain.Recording;
 using RadiCorder.Logics.Extensions;
-using RadiCorder.Logics.Models.Enums;
 using RadiCorder.Logics.Services;
 using ZLogger;
 
@@ -18,32 +19,26 @@ public class MediaTranscodeService(
     ILogger<MediaTranscodeService> logger,
     IFfmpegService ffmpegService,
     IAppConfigurationService config,
-    IHttpClientFactory? httpClientFactory = null) : IMediaTranscodeService
+    IHttpClientFactory? httpClientFactory = null,
+    IEnumerable<IRecordingAcquisitionMethod>? acquisitionMethods = null) : IMediaTranscodeService
 {
-    private const int TimeFreeChunkSecondsMax = 300;
-    private const int TimeFreeChunkUnitSeconds = 5;
-    private const int NonRealtimeRetryMaxAttempts = 3; // 初回 + リトライ2回
-    private const int NonRealtimeRetryInitialDelaySeconds = 30;
-    private const int RadikoRealTimeTailCompensationSeconds = 10;
-    private static readonly Encoding FileListEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    private readonly RecordingFfmpegRunner _runner = new(logger, ffmpegService);
+    private readonly IReadOnlyDictionary<string, IRecordingAcquisitionMethod> _methods =
+        (acquisitionMethods ?? [new RadikoTimeFreeRecorder(logger, ffmpegService, config)]).ToDictionary(x => x.Method, StringComparer.Ordinal);
 
     /// <summary>
     /// 録音を実行する
     /// </summary>
     public async ValueTask<bool> RecordAsync(RecordingSourceResult source, MediaPath path, CancellationToken cancellationToken = default)
     {
-        // タイムフリー録音はradikoのみ対応
-        if (source.Options.IsTimeFree && source.Options.ServiceKind != RadioServiceKind.Radiko)
+        var plan = source.AcquisitionPlan ?? LegacyRecordingAcquisitionPlan.FromOptions(source.Options);
+        source = source with { AcquisitionPlan = plan };
+        var recorded = plan.Method switch
         {
-            logger.ZLogWarning($"タイムフリー録音はradikoのみ対応です。");
-            return false;
-        }
-
-        var recorded = source.Options.IsOnDemand
-            ? await RecordOnDemandAsync(source, path, cancellationToken)
-            : source.Options.IsTimeFree
-                ? await RecordTimeFreeAsync(source, path, cancellationToken)
-                : await RecordRealTimeAsync(source, path, cancellationToken);
+            RecordingAcquisitionPlan.Live => await RecordRealTimeAsync(source, path, cancellationToken),
+            RecordingAcquisitionPlan.Archive => await RecordOnDemandAsync(source, path, cancellationToken),
+            _ => _methods.TryGetValue(plan.Method, out var method) && await method.RecordAsync(source, path, cancellationToken)
+        };
 
         if (!recorded)
         {
@@ -70,139 +65,22 @@ public class MediaTranscodeService(
 
         var command = new StringBuilder();
         command.Append(" -nostdin -loglevel error -stats");
-        AppendUserAgent(command, config.ExternalServiceUserAgent);
-        AppendHeaders(command, source.Headers);
+        RecordingFfmpegArguments.AppendUserAgent(command, config.ExternalServiceUserAgent);
+        RecordingFfmpegArguments.AppendHeaders(command, source.Headers);
         command.Append(" -http_seekable 0 -seekable 0");
         command.Append($" -i \"{source.StreamUrl}\"");
-        command.Append(" -acodec copy -vn -bsf:a aac_adtstoasc");
-        AppendProgramInfo(command, source.ProgramInfo);
+        RecordingFfmpegArguments.AppendAudio(command, source.AcquisitionPlan!);
+        RecordingFfmpegArguments.AppendProgramInfo(command, source.ProgramInfo);
         command.Append($" -y \"{path.TempFilePath}\"");
 
         logger.ZLogDebug($"聞き逃し配信録音開始: station={source.ProgramInfo.StationId} title={source.ProgramInfo.Title} programId={source.ProgramInfo.ProgramId}");
 
-        return await RunFfmpegWithRetryAsync(
+        return await _runner.RunFfmpegWithRetryAsync(
             operationName: "聞き逃し配信録音",
             ffmpegArguments: command.ToString(),
             timeoutSeconds: timeout,
             loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_ondemand",
             cancellationToken: cancellationToken);
-    }
-
-    /// <summary>
-    /// タイムフリー録音
-    /// </summary>
-    private async ValueTask<bool> RecordTimeFreeAsync(RecordingSourceResult source, MediaPath path, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(source.StreamUrl))
-        {
-            logger.ZLogError($"タイムフリー録音URLが空です。");
-            return false;
-        }
-
-        var startTime = source.ProgramInfo.StartTime;
-        var endTime = source.ProgramInfo.EndTime;
-
-        if (startTime >= endTime)
-        {
-            logger.ZLogError($"タイムフリー録音の開始/終了時刻が不正です。");
-            return false;
-        }
-
-        var tmpDir = TemporaryStoragePaths.GetTimeFreeWorkDirectory(config.TemporaryFileSaveDir);
-        var baseName = $"radiko_ts_{Guid.NewGuid():N}";
-        var fileListPath = Path.Combine(tmpDir, $"{baseName}_filelist.txt");
-
-        Directory.CreateDirectory(tmpDir);
-
-        // concat用のファイルリストはBOMなしで生成する
-        await File.WriteAllTextAsync(fileListPath, string.Empty, FileListEncoding);
-
-        var stationId = source.RequestStationIdOverride ?? source.ProgramInfo.StationId;
-        var startAt = ToRadikoTimeString(startTime);
-        var lsid = Guid.NewGuid().ToString("N");
-
-        var ok = true;
-        var seekTime = startTime;
-        var leftSeconds = (int)Math.Floor((endTime - startTime).TotalSeconds);
-        var chunkNo = 0;
-
-        try
-        {
-            while (leftSeconds > 0)
-            {
-                var chunkSeconds = GetTimeFreeChunkSeconds(leftSeconds);
-                var seek = ToRadikoTimeString(seekTime);
-                var endAtTime = seekTime.AddSeconds(chunkSeconds);
-                var endAt = ToRadikoTimeString(endAtTime);
-
-                var url = BuildTimeFreeChunkUrl(
-                    baseUrl: source.StreamUrl,
-                    stationId: stationId,
-                    startAt: startAt,
-                    seek: seek,
-                    endAt: endAt,
-                    lengthSeconds: chunkSeconds,
-                    lsid: lsid);
-
-                var chunkFile = Path.Combine(tmpDir, $"{baseName}_chunk{chunkNo}.m4a");
-
-                var command = new StringBuilder();
-                command.Append(" -nostdin -loglevel error -stats");
-                command.Append(" -fflags +discardcorrupt");
-                AppendUserAgent(command, config.ExternalServiceUserAgent);
-                AppendHeaders(command, source.Headers);
-                command.Append(" -http_seekable 0 -seekable 0");
-                command.Append($" -i \"{url}\"");
-                command.Append(" -acodec copy -vn -bsf:a aac_adtstoasc -y");
-                command.Append($" \"{chunkFile}\"");
-
-                logger.ZLogDebug($"タイムフリー録音チャンク開始: chunk={chunkNo} seek={seek} end_at={endAt} l={chunkSeconds}s");
-
-                var timeoutSeconds = Math.Clamp(chunkSeconds + 120, 120, 3600);
-                if (!await RunFfmpegWithRetryAsync(
-                    operationName: $"タイムフリー録音チャンク取得(chunk={chunkNo})",
-                    ffmpegArguments: command.ToString(),
-                    timeoutSeconds: timeoutSeconds,
-                    loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_chunk{chunkNo}",
-                    cancellationToken: cancellationToken))
-                {
-                    ok = false;
-                    break;
-                }
-
-                var chunkForList = Path.GetFullPath(chunkFile).Replace('\\', '/');
-                await File.AppendAllTextAsync(fileListPath, $"file '{chunkForList}'\n", FileListEncoding);
-
-                seekTime = seekTime.AddSeconds(chunkSeconds);
-                leftSeconds -= chunkSeconds;
-                chunkNo++;
-            }
-
-            if (!ok)
-            {
-                logger.ZLogError($"タイムフリー録音チャンク取得に失敗しました。");
-                return false;
-            }
-
-            var concatCommand = new StringBuilder();
-            concatCommand.Append(" -loglevel error -f concat -safe 0");
-            concatCommand.Append($" -i \"{fileListPath}\"");
-            concatCommand.Append(" -c copy");
-            AppendProgramInfo(concatCommand, source.ProgramInfo);
-            concatCommand.Append($" -y \"{path.TempFilePath}\"");
-
-            logger.ZLogDebug($"タイムフリー録音結合開始: station={source.ProgramInfo.StationId} title={source.ProgramInfo.Title} start={source.ProgramInfo.StartTime:O} end={source.ProgramInfo.EndTime:O}");
-            return await RunFfmpegWithRetryAsync(
-                operationName: "タイムフリー録音結合",
-                ffmpegArguments: concatCommand.ToString(),
-                timeoutSeconds: 600,
-                loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_concat",
-                cancellationToken: cancellationToken);
-        }
-        finally
-        {
-            CleanupTempFiles(tmpDir, baseName);
-        }
     }
 
     /// <summary>
@@ -216,7 +94,7 @@ public class MediaTranscodeService(
             startTime = source.ProgramInfo.StartTime;
         }
 
-        var tailCompensationSeconds = GetRealTimeTailCompensationSeconds(source);
+        var tailCompensationSeconds = source.AcquisitionPlan!.TailCompensationSeconds;
         var diff = source.ProgramInfo.EndTime
             .AddSeconds(source.Options.StartDelaySeconds)
             .AddSeconds(source.Options.EndDelaySeconds)
@@ -227,21 +105,22 @@ public class MediaTranscodeService(
         // HLS ライブ入力は元から実時間で供給されるため、-re で入力を絞ると
         // ライブ窓から取りこぼしやすくなる。
         command.Append(" -vn -nostdin");
-        AppendUserAgent(command, config.ExternalServiceUserAgent);
-        AppendHeaders(command, source.Headers);
+        RecordingFfmpegArguments.AppendUserAgent(command, config.ExternalServiceUserAgent);
+        RecordingFfmpegArguments.AppendHeaders(command, source.Headers);
         command.Append(" -http_seekable 0 -seekable 0");
         command.Append(" -reconnect 1 -reconnect_streamed 1 -reconnect_on_network_error 1 -reconnect_delay_max 120");
         command.Append($" -i \"{source.StreamUrl}\"");
-        command.Append($" -t {diff.TotalSeconds}");
+        command.Append($" -t {diff.TotalSeconds.ToString(CultureInfo.InvariantCulture)}");
 
-        if (source.Options.ServiceKind == RadioServiceKind.Radiru)
+        if (source.AcquisitionPlan!.FastStart)
         {
-            // らじる★らじる向けの最適化
+            // 取得計画で指定された出力の最適化
             command.Append(" -movflags +faststart");
         }
 
-        command.Append(" -acodec copy -vn -bsf:a aac_adtstoasc -y");
-        AppendProgramInfo(command, source.ProgramInfo);
+        RecordingFfmpegArguments.AppendAudio(command, source.AcquisitionPlan!);
+        command.Append(" -y");
+        RecordingFfmpegArguments.AppendProgramInfo(command, source.ProgramInfo);
         command.Append($" -y \"{path.TempFilePath}\"");
 
         var timeout = (int)diff.Add(new TimeSpan(0, 10, 0)).TotalSeconds;
@@ -254,146 +133,7 @@ public class MediaTranscodeService(
             cancellationToken);
     }
 
-    private static int GetRealTimeTailCompensationSeconds(RecordingSourceResult source)
-    {
-        return source.Options.ServiceKind == RadioServiceKind.Radiko ? RadikoRealTimeTailCompensationSeconds : 0;
-    }
 
-    /// <summary>
-    /// HTTPヘッダーをFFmpegコマンドに追加する
-    /// </summary>
-    private static void AppendHeaders(StringBuilder command, IReadOnlyDictionary<string, string> headers)
-    {
-        if (headers.Count == 0)
-            return;
-
-        var headerValue = string.Join("\r\n", headers.Select(h => $"{h.Key}: {h.Value}")) + "\r\n";
-        command.Append($" -headers \"{headerValue}\"");
-    }
-
-    /// <summary>
-    /// HTTP User-Agent をFFmpegコマンドに追加する
-    /// </summary>
-    private static void AppendUserAgent(StringBuilder command, string userAgent)
-    {
-        if (string.IsNullOrWhiteSpace(userAgent))
-        {
-            return;
-        }
-
-        command.Append($" -user_agent \"{userAgent.ToSafeNameAndSafeCommandParameter()}\"");
-    }
-
-    /// <summary>
-    /// 番組情報をFFmpegコマンドに追加する
-    /// </summary>
-    private static void AppendProgramInfo(StringBuilder command, ProgramRecordingInfo programInfo)
-    {
-        command.Append($" -metadata title=\"{programInfo.Title.ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata comment=\"{programInfo.Description.ExtractTextFromHtml().ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata artist=\"{programInfo.Performer.ToSafeNameAndSafeCommandParameter()}\"");
-        command.Append($" -metadata date=\"{programInfo.StartTime.ToJapanDateTime()}\"");
-    }
-
-    /// <summary>
-    /// タイムフリー録音のチャンクURLを生成する
-    /// </summary>
-    private static string BuildTimeFreeChunkUrl(
-        string baseUrl,
-        string stationId,
-        string startAt,
-        string seek,
-        string endAt,
-        int lengthSeconds,
-        string lsid)
-    {
-        var separator = baseUrl.Contains('?') ? "&" : "?";
-        return $"{baseUrl}{separator}station_id={Uri.EscapeDataString(stationId)}" +
-               $"&start_at={startAt}&ft={startAt}" +
-               $"&seek={seek}&end_at={endAt}&to={endAt}" +
-               $"&l={lengthSeconds}&lsid={lsid}&type=c";
-    }
-
-    /// <summary>
-    /// タイムフリー録音のチャンク秒数を計算する
-    /// </summary>
-    private static int GetTimeFreeChunkSeconds(int leftSeconds)
-    {
-        if (leftSeconds <= 0) return 0;
-        if (leftSeconds >= TimeFreeChunkSecondsMax) return TimeFreeChunkSecondsMax;
-
-        return leftSeconds % TimeFreeChunkUnitSeconds == 0
-            ? leftSeconds
-            : ((leftSeconds / TimeFreeChunkUnitSeconds) + 1) * TimeFreeChunkUnitSeconds;
-    }
-
-    /// <summary>
-    /// radiko向け日時フォーマット(yyyyMMddHHmmss)へ変換する
-    /// </summary>
-    private static string ToRadikoTimeString(DateTimeOffset dateTimeOffset)
-    {
-        return dateTimeOffset.ToJapanDateTime().ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>
-    /// 一時ファイルを削除する
-    /// </summary>
-    private static void CleanupTempFiles(string tmpDir, string baseName)
-    {
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(tmpDir, $"{baseName}_*"))
-            {
-                try
-                {
-                    File.Delete(file);
-                }
-                catch
-                {
-                    // 失敗しても次に進む
-                }
-            }
-        }
-        catch
-        {
-            // 失敗しても次に進む
-        }
-    }
-
-    private async ValueTask<bool> RunFfmpegWithRetryAsync(
-        string operationName,
-        string ffmpegArguments,
-        int timeoutSeconds,
-        string loggingProgramName,
-        CancellationToken cancellationToken)
-    {
-        for (var attempt = 1; attempt <= NonRealtimeRetryMaxAttempts; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var success = await ffmpegService.RunProcessAsync(
-                ffmpegArguments,
-                timeoutSeconds,
-                loggingProgramName,
-                cancellationToken);
-            if (success)
-            {
-                return true;
-            }
-
-            if (attempt >= NonRealtimeRetryMaxAttempts)
-            {
-                logger.ZLogError($"{operationName} が失敗しました。リトライ上限に到達しました。 attempts={NonRealtimeRetryMaxAttempts}");
-                return false;
-            }
-
-            var delaySeconds = NonRealtimeRetryInitialDelaySeconds * (int)Math.Pow(2, attempt - 1);
-            logger.ZLogWarning($"{operationName} が失敗したためリトライします。 attempt={attempt}/{NonRealtimeRetryMaxAttempts} nextDelaySec={delaySeconds}");
-            await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
-        }
-
-        return false;
-    }
 
     private async ValueTask TryAttachProgramImageAsCoverArtAsync(
         ProgramRecordingInfo programInfo,

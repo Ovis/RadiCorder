@@ -103,7 +103,15 @@ namespace RadiCorder.Logics.Services
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-                var loggingFilePath = string.IsNullOrEmpty(loggingProgramName) ? string.Empty : GenerateLoggingFileName(loggingProgramName);
+                var loggingFilePath = string.Empty;
+                if (!string.IsNullOrEmpty(loggingProgramName))
+                {
+                    try { loggingFilePath = GenerateLoggingFileName(loggingProgramName); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        logger.ZLogWarning(ex, $"FFmpegログファイルを作成できません。録音処理は継続します。");
+                    }
+                }
 
                 var result = await ExecuteFfmpegTaskAsync(arguments, linkedCts.Token, loggingFilePath);
 
@@ -177,102 +185,51 @@ namespace RadiCorder.Logics.Services
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
 
+            process.Start();
+            var logEnabled = !string.IsNullOrEmpty(logFilePath);
+            var outputTask = ReadOutputAsync(process.StandardOutput, "[FFmpeg Output] ");
+            var errorTask = ReadOutputAsync(process.StandardError, string.Empty);
             try
             {
-                process.OutputDataReceived += (_, e) =>
+                await process.WaitForExitAsync(token);
+            }
+            finally
+            {
+                if (!process.HasExited)
                 {
-                    if (string.IsNullOrEmpty(e.Data)) return;
+                    try { process.Kill(entireProcessTree: true); }
+                    catch (InvalidOperationException) when (process.HasExited) { }
+                    await process.WaitForExitAsync(CancellationToken.None);
+                }
+                // 終了時にも出力を読み切り、バックグラウンドの読み取り処理を残さない。
+                await Task.WhenAll(outputTask, errorTask);
+            }
 
-                    if (!string.IsNullOrEmpty(logFilePath))
-                    {
-                        lock (_logFileLock)
-                        {
-                            using var fileStream = new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                            using var writer = new StreamWriter(fileStream, Encoding.UTF8);
-                            writer.WriteLine($"[FFmpeg Output] {e.Data}");
-                        }
-                    }
-                    logger.ZLogDebug($"[FFmpeg Output] {e.Data}");
-                };
+            if (process.ExitCode != 0)
+            {
+                logger.ZLogError($"FFmpegプロセスが異常終了しました。exitCode={process.ExitCode}");
+            }
+            return process.ExitCode == 0;
 
-                process.ErrorDataReceived += (_, e) =>
+            async Task ReadOutputAsync(StreamReader reader, string prefix)
+            {
+                while (await reader.ReadLineAsync() is { } line)
                 {
-                    if (string.IsNullOrEmpty(e.Data)) return;
-
-                    if (!string.IsNullOrEmpty(logFilePath))
+                    logger.ZLogDebug($"{prefix}{line}");
+                    lock (_logFileLock)
                     {
-                        lock (_logFileLock)
+                        if (!logEnabled) continue;
+                        try
                         {
-                            using var fileStream = new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                            using var writer = new StreamWriter(fileStream, Encoding.UTF8);
-                            writer.WriteLine($"{e.Data}");
+                            File.AppendAllText(logFilePath, $"{prefix}{line}{Environment.NewLine}", Encoding.UTF8);
                         }
-                    }
-                    logger.ZLogDebug($"{e.Data}");
-                };
-
-                process.Start();
-
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                var taskCompletionSource = new TaskCompletionSource<bool>();
-
-                process.Exited += (_, _) =>
-                {
-                    var isSuccess = process.ExitCode == 0;
-                    taskCompletionSource.TrySetResult(isSuccess);
-                };
-                process.EnableRaisingEvents = true;
-
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                var delayTask = Task.Delay(-1, linkedCts.Token);
-
-                try
-                {
-                    var completedTask = await Task.WhenAny(taskCompletionSource.Task, delayTask);
-
-                    if (completedTask == taskCompletionSource.Task)
-                    {
-                        var isSuccess = await taskCompletionSource.Task;
-                        if (!isSuccess)
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                         {
-                            logger.ZLogError($"FFmpegプロセスが異常終了しました。exitCode={process.ExitCode}");
+                            logEnabled = false;
+                            logger.ZLogWarning(ex, $"FFmpegログの書き込みに失敗しました。録音処理は継続します。");
                         }
-
-                        return isSuccess;
-                    }
-                    else
-                    {
-                        if (!process.HasExited)
-                        {
-                            logger.ZLogError($"FFmpegプロセスが指定時間内に終了しませんでした。");
-                            try
-                            {
-                                process.Kill();
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.ZLogError(ex, $"FFmpegプロセスの強制終了に失敗しました。");
-                            }
-                        }
-                        token.ThrowIfCancellationRequested();
-                        return false;
                     }
                 }
-                finally
-                {
-                    linkedCts.Cancel();
-                }
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception e)
-            {
-                logger.ZLogError(e, $"Ffmpeg録音処理でエラー");
-                return false;
             }
         }
 

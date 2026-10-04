@@ -63,21 +63,21 @@ public class MediaTranscodeService(
         var duration = source.ProgramInfo.EndTime - source.ProgramInfo.StartTime;
         var timeout = (int)Math.Clamp(duration.TotalSeconds + 600, 600, 7200);
 
-        var command = new StringBuilder();
+        var command = new FfmpegCommandBuilder();
         command.Append(" -nostdin -loglevel error -stats");
         RecordingFfmpegArguments.AppendUserAgent(command, config.ExternalServiceUserAgent);
         RecordingFfmpegArguments.AppendHeaders(command, source.Headers);
         command.Append(" -http_seekable 0 -seekable 0");
-        command.Append($" -i \"{source.StreamUrl}\"");
+        command.Add("-i", source.StreamUrl);
         RecordingFfmpegArguments.AppendAudio(command, source.AcquisitionPlan!);
         RecordingFfmpegArguments.AppendProgramInfo(command, source.ProgramInfo);
-        command.Append($" -y \"{path.TempFilePath}\"");
+        command.Add("-y", path.TempFilePath);
 
         logger.ZLogDebug($"聞き逃し配信録音開始: station={source.ProgramInfo.StationId} title={source.ProgramInfo.Title} programId={source.ProgramInfo.ProgramId}");
 
         return await _runner.RunFfmpegWithRetryAsync(
             operationName: "聞き逃し配信録音",
-            ffmpegArguments: command.ToString(),
+            ffmpegArguments: command.Build(),
             timeoutSeconds: timeout,
             loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_ondemand",
             cancellationToken: cancellationToken);
@@ -101,7 +101,7 @@ public class MediaTranscodeService(
             .AddSeconds(tailCompensationSeconds)
             - startTime;
 
-        var command = new StringBuilder();
+        var command = new FfmpegCommandBuilder();
         // HLS ライブ入力は元から実時間で供給されるため、-re で入力を絞ると
         // ライブ窓から取りこぼしやすくなる。
         command.Append(" -vn -nostdin");
@@ -109,7 +109,7 @@ public class MediaTranscodeService(
         RecordingFfmpegArguments.AppendHeaders(command, source.Headers);
         command.Append(" -http_seekable 0 -seekable 0");
         command.Append(" -reconnect 1 -reconnect_streamed 1 -reconnect_on_network_error 1 -reconnect_delay_max 120");
-        command.Append($" -i \"{source.StreamUrl}\"");
+        command.Add("-i", source.StreamUrl);
         command.Append($" -t {diff.TotalSeconds.ToString(CultureInfo.InvariantCulture)}");
 
         if (source.AcquisitionPlan!.FastStart)
@@ -121,13 +121,13 @@ public class MediaTranscodeService(
         RecordingFfmpegArguments.AppendAudio(command, source.AcquisitionPlan!);
         command.Append(" -y");
         RecordingFfmpegArguments.AppendProgramInfo(command, source.ProgramInfo);
-        command.Append($" -y \"{path.TempFilePath}\"");
+        command.Add("-y", path.TempFilePath);
 
         var timeout = (int)diff.Add(new TimeSpan(0, 10, 0)).TotalSeconds;
         logger.ZLogDebug($"リアルタイム録音開始: station={source.ProgramInfo.StationId} title={source.ProgramInfo.Title} start={source.ProgramInfo.StartTime:O} end={source.ProgramInfo.EndTime:O} tailCompSec={tailCompensationSeconds} timeoutSec={timeout}");
 
-        return await ffmpegService.RunProcessAsync(
-            command.ToString(),
+        return await ffmpegService.RunArgumentsAsync(
+            command.Build(),
             timeout,
             $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}",
             cancellationToken);
@@ -165,16 +165,16 @@ public class MediaTranscodeService(
 
             outputPath = Path.Combine(logoImageDirectory, $"{Ulid.NewUlid()}.m4a");
 
-            var command = new StringBuilder();
+            var command = new FfmpegCommandBuilder();
             command.Append(" -nostdin -loglevel error -stats");
-            command.Append($" -i \"{path.TempFilePath}\"");
-            command.Append($" -i \"{imagePath}\"");
+            command.Add("-i", path.TempFilePath);
+            command.Add("-i", imagePath);
             command.Append(" -map 0:a -map 1:v");
             command.Append(" -c:a copy -c:v mjpeg -disposition:v:0 attached_pic -movflags +faststart");
-            command.Append($" -y \"{outputPath}\"");
+            command.Add("-y", outputPath);
 
-            var attached = await ffmpegService.RunProcessAsync(
-                command.ToString(),
+            var attached = await ffmpegService.RunArgumentsAsync(
+                command.Build(),
                 timeoutSeconds: 180,
                 loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{programInfo.Title}_cover-art",
                 cancellationToken);

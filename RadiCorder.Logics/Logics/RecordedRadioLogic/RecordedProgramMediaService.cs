@@ -236,10 +236,10 @@ public class RecordedProgramMediaService(
         var output = Path.Combine(outputDir, "radio%03d.ts");
         var mediaTrackInfoFileName = HlsFilePath(recorderId);
 
-        var copyCommand =
-            $"-i \"{filePath}\" -map 0:a:0 -vn -sn -dn -c:a copy -start_number 0 -hls_time 10 -hls_list_size 0 " +
-            $"-hls_flags independent_segments -f hls -hls_segment_filename \"{output}\" \"{mediaTrackInfoFileName}\"";
-        var ffmpegResult = await ffmpegService.RunProcessAsync(copyCommand, 300);
+        string[] copyCommand = ["-i", filePath, "-map", "0:a:0", "-vn", "-sn", "-dn", "-c:a", "copy",
+            "-start_number", "0", "-hls_time", "10", "-hls_list_size", "0", "-hls_flags", "independent_segments",
+            "-f", "hls", "-hls_segment_filename", output, mediaTrackInfoFileName];
+        var ffmpegResult = await ffmpegService.RunArgumentsAsync(copyCommand, 300);
         if (!ffmpegResult)
         {
             logger.ZLogWarning($"HLS生成に失敗しました。recordingId={recorderId}");
@@ -257,10 +257,10 @@ public class RecordedProgramMediaService(
             logger.ZLogWarning($"HLSプレイリストが無効なため再生成します。recordingId={recorderId}");
             CleanupGeneratedHlsArtifacts(outputDir);
 
-            var encodeCommand =
-                $"-i \"{filePath}\" -map 0:a:0 -vn -sn -dn -c:a aac -b:a 128k -ar 48000 -ac 2 -start_number 0 -hls_time 10 -hls_list_size 0 " +
-                $"-hls_flags independent_segments -f hls -hls_segment_filename \"{output}\" \"{mediaTrackInfoFileName}\"";
-            var reEncodeResult = await ffmpegService.RunProcessAsync(encodeCommand, 300);
+            string[] encodeCommand = ["-i", filePath, "-map", "0:a:0", "-vn", "-sn", "-dn", "-c:a", "aac",
+                "-b:a", "128k", "-ar", "48000", "-ac", "2", "-start_number", "0", "-hls_time", "10", "-hls_list_size", "0",
+                "-hls_flags", "independent_segments", "-f", "hls", "-hls_segment_filename", output, mediaTrackInfoFileName];
+            var reEncodeResult = await ffmpegService.RunArgumentsAsync(encodeCommand, 300);
             if (!reEncodeResult || !File.Exists(mediaTrackInfoFileName) || await IsInvalidHlsPlaylistAsync(mediaTrackInfoFileName))
             {
                 logger.ZLogWarning($"HLS再生成に失敗しました。recordingId={recorderId}");

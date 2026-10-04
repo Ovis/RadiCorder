@@ -76,22 +76,22 @@ public class RadikoTimeFreeRecorder(ILogger<MediaTranscodeService> logger, IFfmp
 
                 var chunkFile = Path.Combine(tmpDir, $"{baseName}_chunk{chunkNo}.m4a");
 
-                var command = new StringBuilder();
+                var command = new FfmpegCommandBuilder();
                 command.Append(" -nostdin -loglevel error -stats");
                 command.Append(" -fflags +discardcorrupt");
                 RecordingFfmpegArguments.AppendUserAgent(command, config.ExternalServiceUserAgent);
                 RecordingFfmpegArguments.AppendHeaders(command, source.Headers);
                 command.Append(" -http_seekable 0 -seekable 0");
-                command.Append($" -i \"{url}\"");
+                command.Add("-i", url);
                 command.Append(" -acodec copy -vn -bsf:a aac_adtstoasc -y");
-                command.Append($" \"{chunkFile}\"");
+                command.Add(chunkFile);
 
                 logger.ZLogDebug($"タイムフリー録音チャンク開始: chunk={chunkNo} seek={seek} end_at={endAt} l={chunkSeconds}s");
 
                 var timeoutSeconds = Math.Clamp(chunkSeconds + 120, 120, 3600);
                 if (!await _runner.RunFfmpegWithRetryAsync(
                     operationName: $"タイムフリー録音チャンク取得(chunk={chunkNo})",
-                    ffmpegArguments: command.ToString(),
+                    ffmpegArguments: command.Build(),
                     timeoutSeconds: timeoutSeconds,
                     loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_chunk{chunkNo}",
                     cancellationToken: cancellationToken))
@@ -101,7 +101,7 @@ public class RadikoTimeFreeRecorder(ILogger<MediaTranscodeService> logger, IFfmp
                 }
 
                 var chunkForList = Path.GetFullPath(chunkFile).Replace('\\', '/');
-                await File.AppendAllTextAsync(fileListPath, $"file '{chunkForList}'\n", FileListEncoding);
+                await File.AppendAllTextAsync(fileListPath, "file '" + chunkForList.Replace("'", "'\\''") + "'\n", FileListEncoding, cancellationToken);
 
                 seekTime = seekTime.AddSeconds(chunkSeconds);
                 leftSeconds -= chunkSeconds;
@@ -114,17 +114,17 @@ public class RadikoTimeFreeRecorder(ILogger<MediaTranscodeService> logger, IFfmp
                 return false;
             }
 
-            var concatCommand = new StringBuilder();
+            var concatCommand = new FfmpegCommandBuilder();
             concatCommand.Append(" -loglevel error -f concat -safe 0");
-            concatCommand.Append($" -i \"{fileListPath}\"");
+            concatCommand.Add("-i", fileListPath);
             concatCommand.Append(" -c copy");
             RecordingFfmpegArguments.AppendProgramInfo(concatCommand, source.ProgramInfo);
-            concatCommand.Append($" -y \"{path.TempFilePath}\"");
+            concatCommand.Add("-y", path.TempFilePath);
 
             logger.ZLogDebug($"タイムフリー録音結合開始: station={source.ProgramInfo.StationId} title={source.ProgramInfo.Title} start={source.ProgramInfo.StartTime:O} end={source.ProgramInfo.EndTime:O}");
             return await _runner.RunFfmpegWithRetryAsync(
                 operationName: "タイムフリー録音結合",
-                ffmpegArguments: concatCommand.ToString(),
+                ffmpegArguments: concatCommand.Build(),
                 timeoutSeconds: 600,
                 loggingProgramName: $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{source.ProgramInfo.Title}_concat",
                 cancellationToken: cancellationToken);

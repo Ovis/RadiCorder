@@ -16,7 +16,7 @@ internal class RecordingFfmpegRunner(ILogger<MediaTranscodeService> logger, IFfm
 
     public async ValueTask<bool> RunFfmpegWithRetryAsync(
         string operationName,
-        string ffmpegArguments,
+        IReadOnlyList<string> ffmpegArguments,
         int timeoutSeconds,
         string loggingProgramName,
         CancellationToken cancellationToken)
@@ -25,7 +25,7 @@ internal class RecordingFfmpegRunner(ILogger<MediaTranscodeService> logger, IFfm
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var success = await ffmpegService.RunProcessAsync(
+            var success = await ffmpegService.RunArgumentsAsync(
                 ffmpegArguments,
                 timeoutSeconds,
                 loggingProgramName,

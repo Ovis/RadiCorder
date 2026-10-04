@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Text.Json;
+using RadiCorder.Logics.Domain.Recording;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -77,6 +79,39 @@ public class FfmpegProcessLifetimeTests
         Assert.That(async () => await task, Throws.InstanceOf<OperationCanceledException>());
         Assert.That(ProcessExists(pid), Is.False);
         Assert.That(cache, Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task 外部URLの引用符を追加オプションとして解釈しない(bool legacyAdapter)
+    {
+        var capture = Path.Combine(_root, "args.json");
+        File.WriteAllText(_script, $"#!/usr/bin/python3\nimport json, sys\njson.dump(sys.argv[1:], open('{capture}', 'w'))\n");
+        if (OperatingSystem.IsLinux()) File.SetUnixFileMode(_script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        IFfmpegService service = CreateService();
+        if (legacyAdapter) service = new LegacyAdapter(service);
+        var url = "https://example.test/media?value=\" -metadata injected=value \"";
+        var path = Path.Combine(_root, "output \"quoted\".m4a");
+        var source = new RecordingSourceResult(url, new Dictionary<string, string>(),
+            new ProgramRecordingInfo("p", "s", "station", "title", "", "", DateTimeOffset.UtcNow.AddMinutes(-1),
+                DateTimeOffset.UtcNow, "", "", "", ""),
+            new RecordingOptions(RadiCorder.Logics.Models.Enums.RadioServiceKind.Radiru, false, 0, 0, true))
+        {
+            AcquisitionPlan = new RecordingAcquisitionPlan(RecordingAcquisitionPlan.Archive)
+        };
+        var transcode = new MediaTranscodeService(NullLogger<MediaTranscodeService>.Instance, service, _config.Object);
+        Assert.That(await transcode.RecordAsync(source, new MediaPath(path, path, "fixture")), Is.True);
+        var arguments = JsonSerializer.Deserialize<string[]>(File.ReadAllText(capture))!;
+        Assert.That(arguments[Array.IndexOf(arguments, "-i") + 1], Is.EqualTo(url));
+        Assert.That(arguments.Last(), Is.EqualTo(path));
+        Assert.That(arguments, Does.Not.Contain("injected=value"));
+    }
+
+    private sealed class LegacyAdapter(IFfmpegService service) : IFfmpegService
+    {
+        public bool Initialize() => service.Initialize();
+        public ValueTask<bool> RunProcessAsync(string arguments, int timeoutSeconds, string loggingProgramName = "", CancellationToken cancellationToken = default)
+            => service.RunProcessAsync(arguments, timeoutSeconds, loggingProgramName, cancellationToken);
     }
 
     private FfmpegService CreateService() => new(NullLogger<IFfmpegService>.Instance, _config.Object,

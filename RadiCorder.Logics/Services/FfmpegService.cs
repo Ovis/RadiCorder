@@ -11,7 +11,7 @@ namespace RadiCorder.Logics.Services
     public class FfmpegService(
         ILogger<IFfmpegService> logger,
         IAppConfigurationService appConfigurationService,
-        IConfiguration configuration) : IFfmpegService
+        IConfiguration configuration) : IFfmpegArgumentService
     {
         private string? _ffmpegPath;
         private readonly object _logFileLock = new();
@@ -91,8 +91,17 @@ namespace RadiCorder.Logics.Services
         /// <param name="loggingProgramName">ログファイル名（空文字の場合はログファイルに書き込まない）</param>
         /// <param name="cancellationToken"></param>
         /// <returns>処理が成功したかどうか</returns>
-        public async ValueTask<bool> RunProcessAsync(
-            string arguments,
+        public ValueTask<bool> RunProcessAsync(string arguments, int timeoutSeconds,
+            string loggingProgramName = "", CancellationToken cancellationToken = default)
+            => RunProcessCoreAsync(arguments, null, timeoutSeconds, loggingProgramName, cancellationToken);
+
+        public ValueTask<bool> RunProcessAsync(IReadOnlyList<string> arguments, int timeoutSeconds,
+            string loggingProgramName = "", CancellationToken cancellationToken = default)
+            => RunProcessCoreAsync(null, arguments, timeoutSeconds, loggingProgramName, cancellationToken);
+
+        private async ValueTask<bool> RunProcessCoreAsync(
+            string? arguments,
+            IReadOnlyList<string>? argumentList,
             int timeoutSeconds,
             string loggingProgramName = "",
             CancellationToken cancellationToken = default)
@@ -113,7 +122,7 @@ namespace RadiCorder.Logics.Services
                     }
                 }
 
-                var result = await ExecuteFfmpegTaskAsync(arguments, linkedCts.Token, loggingFilePath);
+                var result = await ExecuteFfmpegTaskAsync(arguments, argumentList, linkedCts.Token, loggingFilePath);
 
                 return result;
             }
@@ -174,12 +183,15 @@ namespace RadiCorder.Logics.Services
             return string.Empty;
         }
 
-        private async ValueTask<bool> ExecuteFfmpegTaskAsync(string arguments, CancellationToken token, string logFilePath)
+        private async ValueTask<bool> ExecuteFfmpegTaskAsync(string? arguments, IReadOnlyList<string>? argumentList, CancellationToken token, string logFilePath)
         {
             using var process = new Process();
 
             process.StartInfo.FileName = ExecutablePath;
-            process.StartInfo.Arguments = arguments;
+            if (argumentList != null)
+                foreach (var argument in argumentList) process.StartInfo.ArgumentList.Add(argument);
+            else
+                process.StartInfo.Arguments = arguments ?? string.Empty;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;

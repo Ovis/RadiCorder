@@ -24,7 +24,6 @@ public class RecordingScheduleBackgroundService(
     IRecordingScheduleWakeup recordingScheduleWakeup) : BackgroundService
 {
     private static readonly TimeSpan PeriodicScanInterval = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan StartupRecoveryTimeout = TimeSpan.FromHours(2);
     private static readonly ConcurrentDictionary<Ulid, byte> RunningJobMap = new();
 
     /// <summary>
@@ -109,46 +108,9 @@ public class RecordingScheduleBackgroundService(
         // DB上の有効ジョブをスケジューラ実行可能な初期状態へ揃える。
         await programScheduleLobLogic.SetScheduleJobFromDbAsync();
 
-        var interruptedStates = new[]
-        {
-            ScheduleJobState.Queued,
-            ScheduleJobState.Preparing,
-            ScheduleJobState.Recording,
-            ScheduleJobState.Finalizing
-        };
-
-        var nowUtc = DateTimeOffset.UtcNow;
-        var targets = await dbContext.ScheduleJob
-            .Where(x => x.IsEnabled)
-            .Where(x => interruptedStates.Contains(x.State))
-            .ToListAsync(cancellationToken);
-
-        foreach (var job in targets)
-        {
-            var isTooOld = nowUtc - job.StartDateTime.ToUniversalTime() > StartupRecoveryTimeout;
-            if (isTooOld)
-            {
-                job.State = ScheduleJobState.Failed;
-                job.LastErrorCode = ScheduleJobErrorCode.StartupRecoveryTimeout;
-                job.LastErrorDetail = "起動時復旧でタイムアウトしたため失敗扱いにしました。";
-                job.CompletedUtc = nowUtc;
-                job.IsEnabled = false;
-                continue;
-            }
-
-            // 起動直後に取りこぼしなく再評価できるよう Pending へ戻す。
-            job.State = ScheduleJobState.Pending;
-            job.QueuedAtUtc = null;
-            job.ActualStartUtc = null;
-            job.CompletedUtc = null;
-            job.PrepareStartUtc = ResolvePrepareStartUtc(job);
-            if (job.PrepareStartUtc < nowUtc)
-            {
-                job.PrepareStartUtc = nowUtc;
-            }
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        var recovery = new RecordingJobRecovery(dbContext, appConfigurationService,
+            scope.ServiceProvider.GetService<RecordingFinalizationJournal>());
+        await recovery.RecoverAsync(DateTimeOffset.UtcNow, cancellationToken);
     }
 
     /// <summary>

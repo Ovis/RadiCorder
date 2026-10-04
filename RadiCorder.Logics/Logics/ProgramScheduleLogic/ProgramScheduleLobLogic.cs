@@ -73,7 +73,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             var disabledJobIds = new List<Ulid>();
             var disableFailedJobIds = new List<Ulid>();
 
-            foreach (var scheduleJob in scheduleJobs.Where(x => x.IsEnabled))
+            foreach (var scheduleJob in scheduleJobs.Where(x => x.IsEnabled && x.State == ScheduleJobState.Pending))
             {
                 var (isSuccess, error) = await recordJobLobLogic.SetScheduleJobAsync(scheduleJob);
                 if (isSuccess)
@@ -151,4 +151,3 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
         }
     }
 }
-

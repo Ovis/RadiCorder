@@ -47,7 +47,7 @@ public class RecordJobLobLogic(
 
             // 既存行を Pending に戻し、UTC 基準の実行時刻を再計算する。
             await dbContext.ScheduleJob
-                .Where(x => x.Id == job.Id)
+                .Where(x => x.Id == job.Id && x.State == ScheduleJobState.Pending)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.PrepareStartUtc, prepareStartUtc)
                     .SetProperty(x => x.State, ScheduleJobState.Pending)

@@ -8,15 +8,14 @@
 |---|---|---|
 | AngleSharp | MIT | https://github.com/AngleSharp/AngleSharp |
 | CsvHelper | MS-PL OR Apache-2.0 | https://github.com/JoshClose/CsvHelper |
-| Dapper | Apache-2.0 | https://github.com/DapperLib/Dapper |
 | Microsoft.AspNetCore.DataProtection | MIT | https://github.com/dotnet/aspnetcore |
 | Microsoft.EntityFrameworkCore | MIT | https://github.com/dotnet/efcore |
+| Microsoft.AspNetCore.OpenApi | MIT | https://github.com/dotnet/aspnetcore |
+| Microsoft.OpenApi | MIT | https://github.com/microsoft/OpenAPI.NET |
+| Microsoft.Extensions.Hosting.Systemd | MIT | https://github.com/dotnet/runtime |
+| SQLitePCLRaw.bundle_e_sqlite3 | Apache-2.0 | https://github.com/ericsink/SQLitePCL.raw |
 | Microsoft.EntityFrameworkCore.Sqlite | MIT | https://github.com/dotnet/efcore |
 | Microsoft.Extensions.Http | MIT | https://github.com/dotnet/runtime |
-| Newtonsoft.Json | MIT | https://github.com/JamesNK/Newtonsoft.Json |
-| NAudio | MIT | https://github.com/naudio/NAudio |
-| Swashbuckle.AspNetCore | MIT | https://github.com/domaindrivendev/Swashbuckle.AspNetCore |
-| System.Data.SQLite.Core | SQLite (licenseUrl) | https://www.sqlite.org/copyright.html |
 | TagLibSharp | LGPL-2.1-only | https://github.com/mono/taglib-sharp |
 | Ulid | MIT | https://github.com/Cysharp/Ulid |
 | ZLogger | MIT | https://github.com/Cysharp/ZLogger |
@@ -25,6 +24,9 @@
 
 | Package | License | URL |
 |---|---|---|
+| hls.js | Apache-2.0 | https://github.com/video-dev/hls.js |
+| @microsoft/signalr | MIT | https://github.com/dotnet/aspnetcore |
+| sass | MIT | https://github.com/sass/dart-sass |
 | DOMPurify | Apache-2.0 OR MPL-2.0 | https://github.com/cure53/DOMPurify |
 | tailwindcss | MIT | https://github.com/tailwindlabs/tailwindcss |
 | typescript | Apache-2.0 | https://github.com/microsoft/TypeScript |
@@ -39,8 +41,6 @@
 | NUnit | MIT | https://github.com/nunit/nunit |
 | NUnit.Analyzers | MIT | https://github.com/nunit/nunit.analyzers |
 | NUnit3TestAdapter | MIT | https://github.com/nunit/nunit3-vs-adapter |
-| Microsoft.VisualStudio.Azure.Containers.Tools.Targets | EULA | https://www.nuget.org/packages/Microsoft.VisualStudio.Azure.Containers.Tools.Targets |
-| Microsoft.VisualStudio.Web.CodeGeneration.Design | MIT | https://github.com/dotnet/Scaffolding |
 
 ## 開発用依存の監査結果（2026-10-04）
 

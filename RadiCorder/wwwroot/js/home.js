@@ -4,37 +4,14 @@ import { AvailabilityTimeFree } from './define.js';
 import { API_ENDPOINTS } from './const.js';
 import { showGlobalToast } from './feedback.js';
 import { setTextContent, setInnerHtml, setEventListener, sanitizeHtml } from './utils.js';
-import { playerPlaybackRateOptions, applyPlaybackRate } from './player-rate-control.js';
+import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
-import { readPersistedPlayerState, writePersistedPlayerState, clearPersistedPlayerState } from './player-state-store.js';
-let activeGoLiveAction = null;
-const defaultDocumentTitle = document.title;
-let currentPlayingSourceUrl = null;
-let currentPlayingSourceToken = null;
-let currentPlayingProgramTitle = null;
-function updateHomeDocumentTitle(programTitle) {
-    const title = programTitle?.trim();
-    if (!title) {
-        document.title = defaultDocumentTitle;
-        return;
-    }
-    document.title = `${title} - RadiCorder`;
-}
-function persistCurrentPlaybackState() {
-    if (!currentPlayingSourceUrl) {
-        return;
-    }
-    const audio = document.getElementById('audio-player-elm');
-    writePersistedPlayerState({
-        sourceUrl: currentPlayingSourceUrl,
-        sourceToken: currentPlayingSourceToken,
-        title: currentPlayingProgramTitle,
-        currentTime: audio ? audio.currentTime : 0,
-        playbackRate: audio ? audio.playbackRate : 1,
-        wasPlaying: audio ? !audio.paused && !audio.ended : true,
-        savedAtUtc: new Date().toISOString()
-    });
-}
+import { configurePlayer, getPlayerHls, playPlayerSource, resumePlayer } from './player-controller.js';
+configurePlayer({
+    createControls: (audio, state) => state?.kind === 'live'
+        ? createPlayerJumpControls(audio)
+        : createStandardPlayerJumpControls(audio)
+});
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const response = await fetch(API_ENDPOINTS.PROGRAM_NOW);
@@ -362,10 +339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         buildTabs();
         searchInput.addEventListener('input', () => render());
         render();
-        window.addEventListener('beforeunload', () => {
-            persistCurrentPlaybackState();
-        });
-        await tryResumePersistedPlayback();
     }
     catch (error) {
         console.error('Error fetching data:', error);
@@ -392,142 +365,19 @@ async function playProgram(programId, serviceKind, programTitle) {
         if (response.ok) {
             const result = await response.json();
             const sourceToken = serviceKind === RadioServiceKind.Radiko ? result.data.token : null;
-            await playHomeFromSource(result.data.url, sourceToken, programTitle ?? null, 0, playerPlaybackRateOptions[0]);
+            await playHomeFromSource(result.data.url, sourceToken, programTitle ?? null);
         }
         else {
-            activeGoLiveAction = null;
             showGlobalToast('再生に失敗しました。', false);
         }
     }
     catch (error) {
-        activeGoLiveAction = null;
         console.error('Error:', error);
         showGlobalToast('エラーが発生しました。', false);
     }
 }
-async function playHomeFromSource(sourceUrl, sourceToken, programTitle, startTimeSeconds, playbackRate, options = {}) {
-    const footer = document.getElementById('audio-player');
-    let audio = document.getElementById('audio-player-elm');
-    if (!audio) {
-        footer.innerHTML = "";
-        const playerContainerElm = document.createElement('div');
-        playerContainerElm.className = 'player-container';
-        const playerMainRowElm = document.createElement('div');
-        playerMainRowElm.className = 'player-main-row';
-        const audioPlayerElm = document.createElement('audio');
-        audioPlayerElm.id = 'audio-player-elm';
-        audioPlayerElm.style.width = "100%";
-        audioPlayerElm.style.height = "2rem";
-        audioPlayerElm.controls = true;
-        const closeButton = document.createElement('button');
-        closeButton.type = 'button';
-        closeButton.className = 'player-close-button';
-        closeButton.setAttribute('aria-label', 'プレイヤーを閉じる');
-        closeButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
-        closeButton.addEventListener('click', () => {
-            const player = document.getElementById('audio-player-elm');
-            if (player) {
-                player.pause();
-                player.removeAttribute('src');
-                player.load();
-            }
-            activeGoLiveAction = null;
-            currentPlayingSourceUrl = null;
-            currentPlayingSourceToken = null;
-            currentPlayingProgramTitle = null;
-            clearPersistedPlayerState();
-            updateHomeDocumentTitle(null);
-            footer.innerHTML = '';
-        });
-        playerMainRowElm.appendChild(audioPlayerElm);
-        playerMainRowElm.appendChild(closeButton);
-        playerContainerElm.appendChild(playerMainRowElm);
-        playerContainerElm.appendChild(createPlayerJumpControls(audioPlayerElm));
-        footer.appendChild(playerContainerElm);
-        audio = document.getElementById('audio-player-elm');
-    }
-    const previousSourceUrl = currentPlayingSourceUrl;
-    const previousSourceToken = currentPlayingSourceToken;
-    currentPlayingSourceUrl = sourceUrl;
-    currentPlayingSourceToken = sourceToken;
-    currentPlayingProgramTitle = programTitle;
-    updateHomeDocumentTitle(programTitle);
-    const isSameSource = previousSourceUrl === sourceUrl &&
-        (previousSourceToken ?? '') === (sourceToken ?? '');
-    const effectivePlaybackRate = options.isRestore
-        ? playbackRate
-        : (isSameSource ? playbackRate : playerPlaybackRateOptions[0]);
-    const hlsConstructor = window.Hls;
-    if (hlsConstructor?.isSupported?.()) {
-        const hls = new hlsConstructor();
-        applyPlaybackRate(audio, effectivePlaybackRate);
-        if (sourceToken) {
-            hls.config.xhrSetup = function (xhr) {
-                xhr.setRequestHeader('X-Radiko-AuthToken', sourceToken);
-            };
-        }
-        hls.loadSource(sourceUrl);
-        hls.attachMedia(audio);
-        hls.on(hlsConstructor.Events.MANIFEST_PARSED, () => {
-            if (startTimeSeconds > 0) {
-                audio.currentTime = startTimeSeconds;
-            }
-            audio.play();
-        });
-        activeGoLiveAction = () => {
-            const liveSyncPosition = Number(hls.liveSyncPosition);
-            if (Number.isFinite(liveSyncPosition) && liveSyncPosition > 0) {
-                audio.currentTime = liveSyncPosition;
-            }
-            else if (Number.isFinite(audio.duration)) {
-                audio.currentTime = audio.duration;
-            }
-            hls.startLoad(-1);
-            void audio.play();
-        };
-    }
-    else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        applyPlaybackRate(audio, effectivePlaybackRate);
-        audio.src = sourceUrl;
-        audio.onloadedmetadata = () => {
-            if (startTimeSeconds > 0) {
-                audio.currentTime = startTimeSeconds;
-            }
-            void audio.play();
-        };
-        activeGoLiveAction = () => {
-            if (Number.isFinite(audio.duration)) {
-                audio.currentTime = audio.duration;
-            }
-            void audio.play();
-        };
-    }
-    else {
-        activeGoLiveAction = null;
-        showGlobalToast('このブラウザはHLS再生に対応していません。', false);
-        return;
-    }
-    persistCurrentPlaybackState();
-}
-async function tryResumePersistedPlayback() {
-    if (document.getElementById('audio-player-elm')) {
-        return;
-    }
-    const state = readPersistedPlayerState();
-    if (!state) {
-        return;
-    }
-    const savedAt = new Date(state.savedAtUtc).getTime();
-    if (!Number.isFinite(savedAt)) {
-        clearPersistedPlayerState();
-        return;
-    }
-    // 直近15分以内のみ復帰
-    if (Date.now() - savedAt > 15 * 60 * 1000) {
-        clearPersistedPlayerState();
-        return;
-    }
-    await playHomeFromSource(state.sourceUrl, state.sourceToken ?? null, state.title ?? null, state.currentTime ?? 0, state.playbackRate ?? playerPlaybackRateOptions[0], { isRestore: true });
+async function playHomeFromSource(sourceUrl, sourceToken, programTitle) {
+    await playPlayerSource({ sourceUrl, sourceToken, title: programTitle, kind: 'live' });
 }
 function createPlayerJumpControls(audioElm) {
     const goLiveButton = document.createElement('button');
@@ -537,10 +387,16 @@ function createPlayerJumpControls(audioElm) {
     goLiveButton.setAttribute('aria-label', '現在放送中の位置へ戻る');
     goLiveButton.title = 'ライブへ戻る';
     goLiveButton.addEventListener('click', () => {
-        if (!activeGoLiveAction) {
-            return;
+        const hls = getPlayerHls();
+        const liveSyncPosition = Number(hls?.liveSyncPosition);
+        if (Number.isFinite(liveSyncPosition) && liveSyncPosition > 0) {
+            audioElm.currentTime = liveSyncPosition;
         }
-        activeGoLiveAction();
+        else if (Number.isFinite(audioElm.duration)) {
+            audioElm.currentTime = audioElm.duration;
+        }
+        hls?.startLoad(-1);
+        void resumePlayer();
     });
     return createStandardPlayerJumpControls(audioElm, {
         playbackRateOptions: playerPlaybackRateOptions,

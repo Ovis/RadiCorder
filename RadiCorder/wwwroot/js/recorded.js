@@ -2,9 +2,9 @@ import { API_ENDPOINTS } from './const.js';
 import { showConfirmDialog, showGlobalToast } from './feedback.js';
 import { withButtonLoading } from './loading.js';
 import { setTextContent, setEventListener, formatDisplayDateTime } from './utils.js';
-import { playerPlaybackRateOptions, applyPlaybackRate } from './player-rate-control.js';
+import { playerPlaybackRateOptions } from './player-rate-control.js';
 import { createStandardPlayerJumpControls } from './player-jump-controls.js';
-import { readPersistedPlayerState, writePersistedPlayerState, clearPersistedPlayerState } from './player-state-store.js';
+import { configurePlayer, finishPlayer, playPlayerSource, stopPlayer } from './player-controller.js';
 import { clearMultiSelect, renderSelectedTagChips, enableTouchLikeMultiSelect } from './tag-select-ui.js';
 const sortingElements = {
     'sort-title': 'Title',
@@ -27,14 +27,21 @@ const selectedRecordingIds = new Set();
 let lastLoadedRecordings = [];
 const continuousPlaybackStorageKey = 'radicorder-recorded-continuous-playback';
 let currentPlayingRecordingId = null;
-let currentRecordingHls = null;
-let currentPlayingSourceUrl = null;
-let currentPlayingSourceToken = null;
 let currentPlayingTitle = null;
 const defaultDocumentTitle = document.title;
 let recordingHubConnection = null;
 let isRealtimeReloadRunning = false;
 let hasRealtimeReloadPending = false;
+configurePlayer({
+    createControls: createPlayerJumpControls,
+    onEnded: () => { void handlePlaybackEnded(); },
+    onStateChanged: (state) => {
+        currentPlayingRecordingId = state?.recordId ?? null;
+        currentPlayingTitle = state?.title ?? null;
+        updateDocumentTitleByRecordingId(currentPlayingRecordingId);
+        syncRecordedListPlaybackButtons();
+    }
+});
 function updateDocumentTitleByRecordingId(recordId) {
     if (currentPlayingTitle && currentPlayingTitle.trim().length > 0) {
         document.title = `${currentPlayingTitle.trim()} - RadiCorder`;
@@ -51,21 +58,6 @@ function updateDocumentTitleByRecordingId(recordId) {
         return;
     }
     document.title = `${title} - RadiCorder`;
-}
-function persistCurrentPlaybackState() {
-    if (!currentPlayingSourceUrl) {
-        return;
-    }
-    const audio = document.getElementById('audio-player-elm');
-    writePersistedPlayerState({
-        sourceUrl: currentPlayingSourceUrl,
-        sourceToken: currentPlayingSourceToken,
-        title: currentPlayingTitle,
-        recordId: currentPlayingRecordingId,
-        currentTime: audio ? audio.currentTime : 0,
-        playbackRate: audio ? audio.playbackRate : 1,
-        savedAtUtc: new Date().toISOString()
-    });
 }
 function isCurrentRecordingPlaying(recordId) {
     return currentPlayingRecordingId === recordId;
@@ -95,30 +87,8 @@ function syncRecordedListPlaybackButtons() {
         setRecordedPlaybackButtonState(buttonElm, isCurrentRecordingPlaying(recordingId));
     });
 }
-function stopCurrentPlayback(clearFooter = true) {
-    const player = document.getElementById('audio-player-elm');
-    if (player) {
-        player.pause();
-        player.removeAttribute('src');
-        player.load();
-    }
-    if (currentRecordingHls) {
-        currentRecordingHls.destroy();
-        currentRecordingHls = null;
-    }
-    currentPlayingRecordingId = null;
-    currentPlayingSourceUrl = null;
-    currentPlayingSourceToken = null;
-    currentPlayingTitle = null;
-    updateDocumentTitleByRecordingId(null);
-    clearPersistedPlayerState();
-    if (clearFooter) {
-        const footer = document.getElementById('audio-player');
-        if (footer) {
-            footer.innerHTML = '';
-        }
-    }
-    syncRecordedListPlaybackButtons();
+function stopCurrentPlayback() {
+    stopPlayer();
 }
 function clearRecordingSelection() {
     selectedRecordingIds.clear();
@@ -563,14 +533,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSelectedTagChips(tagFilterSelect, tagFilterChipsContainer, recordedTagChipOptions);
     renderSelectedTagChips(tagBulkSelect, tagBulkChipsContainer, recordedTagChipOptions);
     window.addEventListener('beforeunload', () => {
-        persistCurrentPlaybackState();
         if (recordingHubConnection) {
             void recordingHubConnection.stop();
             recordingHubConnection = null;
         }
     });
     await loadRecordings(currentPage, sortBy, isDescending, searchQuery);
-    await tryResumePersistedPlayback();
     await initializeRecordingHubConnectionAsync();
     window.addEventListener('resize', () => {
         const currentMobileView = isMobileView();
@@ -1186,165 +1154,9 @@ function removeRecordingFromUi(recordId) {
  * @param serviceKind
  */
 async function playProgram(recordId) {
-    const footer = document.getElementById('audio-player');
-    let audio = document.getElementById('audio-player-elm');
-    if (!audio) {
-        footer.innerHTML = "";
-        const playerContainerElm = document.createElement('div');
-        playerContainerElm.className = 'player-container';
-        const playerMainRowElm = document.createElement('div');
-        playerMainRowElm.className = 'player-main-row';
-        const audioPlayerElm = document.createElement('audio');
-        audioPlayerElm.id = 'audio-player-elm';
-        audioPlayerElm.style.width = "100%";
-        audioPlayerElm.style.height = "2rem";
-        audioPlayerElm.controls = true;
-        audioPlayerElm.addEventListener('ended', () => {
-            void handlePlaybackEnded();
-        });
-        const closeButton = document.createElement('button');
-        closeButton.type = 'button';
-        closeButton.className = 'player-close-button';
-        closeButton.setAttribute('aria-label', 'プレイヤーを閉じる');
-        closeButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
-        closeButton.addEventListener('click', () => {
-            stopCurrentPlayback();
-        });
-        playerMainRowElm.appendChild(audioPlayerElm);
-        playerMainRowElm.appendChild(closeButton);
-        playerContainerElm.appendChild(playerMainRowElm);
-        playerContainerElm.appendChild(createPlayerJumpControls(audioPlayerElm));
-        footer.appendChild(playerContainerElm);
-        audio = document.getElementById('audio-player-elm');
-    }
-    const m3u8Url = `/api/recordings/play/${recordId}`;
-    const title = lastLoadedRecordings.find((x) => x.id === recordId)?.title ?? null;
-    await playProgramFromSource(m3u8Url, null, recordId, title, 0, playerPlaybackRateOptions[0]);
-}
-async function playProgramFromSource(sourceUrl, sourceToken, recordId, title, startTimeSeconds, playbackRate, options = {}) {
-    const footer = document.getElementById('audio-player');
-    let audio = document.getElementById('audio-player-elm');
-    if (!audio) {
-        footer.innerHTML = "";
-        const playerContainerElm = document.createElement('div');
-        playerContainerElm.className = 'player-container';
-        const playerMainRowElm = document.createElement('div');
-        playerMainRowElm.className = 'player-main-row';
-        const audioPlayerElm = document.createElement('audio');
-        audioPlayerElm.id = 'audio-player-elm';
-        audioPlayerElm.style.width = "100%";
-        audioPlayerElm.style.height = "2rem";
-        audioPlayerElm.controls = true;
-        audioPlayerElm.addEventListener('ended', () => {
-            void handlePlaybackEnded();
-        });
-        const closeButton = document.createElement('button');
-        closeButton.type = 'button';
-        closeButton.className = 'player-close-button';
-        closeButton.setAttribute('aria-label', 'プレイヤーを閉じる');
-        closeButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
-        closeButton.addEventListener('click', () => {
-            stopCurrentPlayback();
-        });
-        playerMainRowElm.appendChild(audioPlayerElm);
-        playerMainRowElm.appendChild(closeButton);
-        playerContainerElm.appendChild(playerMainRowElm);
-        playerContainerElm.appendChild(createPlayerJumpControls(audioPlayerElm));
-        footer.appendChild(playerContainerElm);
-        audio = document.getElementById('audio-player-elm');
-    }
-    const previousSourceUrl = currentPlayingSourceUrl;
-    const previousSourceToken = currentPlayingSourceToken;
-    currentPlayingRecordingId = recordId;
-    currentPlayingSourceUrl = sourceUrl;
-    currentPlayingSourceToken = sourceToken;
-    currentPlayingTitle = title;
-    updateDocumentTitleByRecordingId(recordId);
-    syncRecordedListPlaybackButtons();
-    const isSameSource = previousSourceUrl === sourceUrl &&
-        (previousSourceToken ?? '') === (sourceToken ?? '');
-    const effectivePlaybackRate = options.isRestore
-        ? playbackRate
-        : (isSameSource ? playbackRate : playerPlaybackRateOptions[0]);
-    if (currentRecordingHls) {
-        currentRecordingHls.destroy();
-        currentRecordingHls = null;
-    }
-    const hlsConstructor = window.Hls;
-    if (hlsConstructor?.isSupported?.()) {
-        const hls = new hlsConstructor();
-        if (sourceToken) {
-            hls.config.xhrSetup = (xhr) => {
-                xhr.setRequestHeader('X-Radiko-AuthToken', sourceToken);
-            };
-        }
-        applyPlaybackRate(audio, effectivePlaybackRate);
-        currentRecordingHls = hls;
-        hls.loadSource(sourceUrl);
-        hls.attachMedia(audio);
-        hls.on(hlsConstructor.Events.MANIFEST_PARSED, () => {
-            if (startTimeSeconds > 0) {
-                audio.currentTime = startTimeSeconds;
-            }
-            audio.play();
-        });
-    }
-    else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        applyPlaybackRate(audio, effectivePlaybackRate);
-        audio.src = sourceUrl;
-        audio.onloadedmetadata = () => {
-            if (startTimeSeconds > 0) {
-                audio.currentTime = startTimeSeconds;
-            }
-            audio.play();
-        };
-    }
-    else {
-        showGlobalToast('このブラウザはHLS再生に対応していません。', false);
-        return;
-    }
-    persistCurrentPlaybackState();
-}
-async function tryResumePersistedPlayback() {
-    const existingAudio = document.getElementById('audio-player-elm');
-    if (existingAudio) {
-        // レイアウト側で復帰済みでも、録音一覧ページでは連続再生ボタン付きコントロールへ統一する
-        ensureRecordedPlayerControls(existingAudio);
-        const state = readPersistedPlayerState();
-        if (state?.recordId) {
-            currentPlayingRecordingId = state.recordId;
-            currentPlayingSourceUrl = state.sourceUrl;
-            currentPlayingSourceToken = state.sourceToken ?? null;
-            currentPlayingTitle = state.title ?? null;
-            updateDocumentTitleByRecordingId(state.recordId);
-            syncRecordedListPlaybackButtons();
-        }
-        return;
-    }
-    const state = readPersistedPlayerState();
-    if (!state) {
-        return;
-    }
-    const savedAt = new Date(state.savedAtUtc).getTime();
-    if (!Number.isFinite(savedAt)) {
-        clearPersistedPlayerState();
-        return;
-    }
-    // 直近15分以内のみ復帰
-    if (Date.now() - savedAt > 15 * 60 * 1000) {
-        clearPersistedPlayerState();
-        return;
-    }
-    await playProgramFromSource(state.sourceUrl, state.sourceToken ?? null, state.recordId ?? null, state.title ?? null, state.currentTime ?? 0, state.playbackRate ?? playerPlaybackRateOptions[0], { isRestore: true });
-}
-function ensureRecordedPlayerControls(audioElm) {
-    const playerContainer = audioElm.closest('.player-container');
-    if (!playerContainer) {
-        return;
-    }
-    const existingControls = playerContainer.querySelector('.player-jump-controls');
-    existingControls?.remove();
-    playerContainer.appendChild(createPlayerJumpControls(audioElm));
+    const sourceUrl = `/api/recordings/play/${recordId}`;
+    const title = lastLoadedRecordings.find((recording) => recording.id === recordId)?.title ?? null;
+    await playPlayerSource({ sourceUrl, recordId, title, kind: 'recording' });
 }
 function createPlayerJumpControls(audioElm) {
     const continuousButton = document.createElement('button');
@@ -1387,28 +1199,17 @@ function getNextRecordingId(currentId) {
     return next?.id ?? null;
 }
 async function handlePlaybackEnded() {
-    if (!isContinuousPlaybackEnabled() || !currentPlayingRecordingId) {
-        currentPlayingRecordingId = null;
-        currentPlayingSourceUrl = null;
-        currentPlayingSourceToken = null;
-        currentPlayingTitle = null;
-        clearPersistedPlayerState();
-        updateDocumentTitleByRecordingId(null);
-        syncRecordedListPlaybackButtons();
+    const finishedId = currentPlayingRecordingId;
+    if (!isContinuousPlaybackEnabled() || !finishedId) {
+        finishPlayer();
         return;
     }
-    const nextRecordingId = getNextRecordingId(currentPlayingRecordingId);
+    const nextRecordingId = getNextRecordingId(finishedId);
     if (!nextRecordingId) {
-        currentPlayingRecordingId = null;
-        currentPlayingSourceUrl = null;
-        currentPlayingSourceToken = null;
-        currentPlayingTitle = null;
-        clearPersistedPlayerState();
-        updateDocumentTitleByRecordingId(null);
-        syncRecordedListPlaybackButtons();
+        finishPlayer();
         return;
     }
-    markRecordingAsListenedInUi(currentPlayingRecordingId);
+    markRecordingAsListenedInUi(finishedId);
     await playProgram(nextRecordingId);
 }
 /**

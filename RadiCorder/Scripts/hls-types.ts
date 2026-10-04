@@ -8,7 +8,7 @@ export interface HlsInstance {
     };
     loadSource(url: string): void;
     attachMedia(media: HTMLMediaElement): void;
-    on(eventName: string, callback: () => void): void;
+    on(eventName: string, callback: (eventName: string, data?: { fatal?: boolean }) => void): void;
     destroy(): void;
 }
 
@@ -22,6 +22,7 @@ export interface HlsConstructor<TInstance extends HlsInstance> {
     isSupported(): boolean;
     Events: {
         MANIFEST_PARSED: string;
+        ERROR: string;
     };
 }
 

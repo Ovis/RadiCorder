@@ -2,6 +2,7 @@ export const persistedPlayerStateKey = 'radicorder-player-state';
 
 export type PersistedPlayerState = {
     sourceUrl: string;
+    kind?: 'live' | 'recording' | 'program';
     sourceToken?: string | null;
     title?: string | null;
     recordId?: string | null;

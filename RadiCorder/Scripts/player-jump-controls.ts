@@ -1,5 +1,12 @@
 import { bindPlaybackRateControl, playerPlaybackRateOptions, setPlaybackRateButtonLabel } from './player-rate-control.js';
 
+const controlAbortControllers = new WeakMap<HTMLElement, AbortController>();
+
+export function disposePlayerJumpControls(controls: Element): void {
+    controlAbortControllers.get(controls as HTMLElement)?.abort();
+    controlAbortControllers.delete(controls as HTMLElement);
+}
+
 export const playerJumpSecondsOptions = [5, 10, 30, 60, 300];
 export const playerJumpStorageKey = 'radicorder-player-jump-seconds';
 
@@ -178,6 +185,8 @@ export function createStandardPlayerJumpControls(
 
     wrapper.appendChild(mainGroup);
     wrapper.appendChild(sideGroup);
-    audioElm.addEventListener('ratechange', updateLabels);
+    const abortController = new AbortController();
+    audioElm.addEventListener('ratechange', updateLabels, { signal: abortController.signal });
+    controlAbortControllers.set(wrapper, abortController);
     return wrapper;
 }

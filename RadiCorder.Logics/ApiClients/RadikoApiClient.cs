@@ -184,10 +184,6 @@ public class RadikoApiClient(
                 var (program, usedFallback, fallbackFields, strictError) = RadikoProgramParser.ParseProgram(programElement, stationId);
                 if (program != null)
                 {
-                    if (string.IsNullOrWhiteSpace(program.Title) || program.EndTime <= program.StartTime)
-                    {
-                        throw new DomainException("radiko番組表の必須項目が不正です。");
-                    }
                     programList.Add(program);
                 }
                 else
@@ -213,7 +209,12 @@ public class RadikoApiClient(
                 }
             }
 
-            return programList;
+            var (normalizedPrograms, warnings) = RadikoProgramScheduleNormalizer.Normalize(programList);
+            foreach (var warning in warnings)
+            {
+                logger.ZLogWarning($"radiko番組表の不完全な項目を検出: StationId={stationId}, ProgramId={warning.ProgramId}, Reason={warning.Reason}, StartTime={warning.StartTime:O}, EndTime={warning.EndTime:O}, EstimatedEndTime={warning.EstimatedEndTime:O}");
+            }
+            return normalizedPrograms;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -318,4 +319,3 @@ public class RadikoApiClient(
         return builder.Uri.ToString();
     }
 }
-

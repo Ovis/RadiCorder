@@ -1,0 +1,4 @@
+<!-- 2026-10-04の実API応答から、番組名が空欄の番組を抜粋。 -->
+<radiko><station id="CRT"><progs>
+  <prog id="14007328" ft="20261007144000" to="20261007145500" dur="900"><title /><ts_in_ng>0</ts_in_ng></prog>
+</progs></station></radiko>

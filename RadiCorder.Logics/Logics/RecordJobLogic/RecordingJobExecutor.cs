@@ -143,6 +143,16 @@ public class RecordingJobExecutor(
             {
                 dbContext.ScheduleJob.Remove(job);
                 await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.ZLogError(ex, $"録音後処理でScheduleJob削除に失敗しました。 jobId={jobId}");
+                await MarkJobFailedAsync(dbContext, job, ScheduleJobErrorCode.FinalizeFailed, ex.Message, cancellationToken);
+                return;
+            }
+
+            try
+            {
                 if (mediaStorageService is IRecoverableMediaStorageService recoverableStorage)
                 {
                     // DBの後処理まで成功した場合だけ、復旧記録を解放する。
@@ -151,8 +161,8 @@ public class RecordingJobExecutor(
             }
             catch (Exception ex)
             {
-                logger.ZLogError(ex, $"録音後処理でScheduleJob削除に失敗しました。 jobId={jobId}");
-                await MarkJobFailedAsync(dbContext, job, ScheduleJobErrorCode.FinalizeFailed, ex.Message, cancellationToken);
+                // DB確定後の掃除に失敗しても録音を失敗へ戻さず、次回復旧へ残す。
+                logger.ZLogWarning(ex, $"録音確定の復旧情報を解放できませんでした。 jobId={jobId}");
             }
         }
         catch (OperationCanceledException)

@@ -57,7 +57,13 @@ public class MediaStorageService(
         var journal = finalizationJournal ?? new RecordingFinalizationJournal(config);
         foreach (var file in journal.GetPendingFiles())
         {
-            var entry = journal.Read(file);
+            RecordingFinalizationJournal.Entry entry;
+            try { entry = journal.Read(file); }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                logger?.ZLogWarning(ex, $"破損した録音確定の復旧情報を保持して、他の後処理を継続します。 journal={file}");
+                continue;
+            }
             if (entry.ScheduleJobId == scheduleJobId.ToString()) journal.Complete(entry.RecordingId);
         }
     }

@@ -34,6 +34,9 @@ public class RecordingFinalizationJournal(IAppConfigurationService config)
     {
         var entry = JsonSerializer.Deserialize<Entry>(File.ReadAllText(filePath))
             ?? throw new InvalidDataException("録音確定の復旧情報が空です。");
+        if (entry.Path == null || string.IsNullOrWhiteSpace(entry.Path.RelativePath) ||
+            string.IsNullOrWhiteSpace(entry.Path.FinalFilePath))
+            throw new InvalidDataException("録音確定の復旧情報の保存先が空です。");
         var expectedPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(config.RecordFileSaveDir, entry.Path.RelativePath));
         var root = System.IO.Path.GetFullPath(config.RecordFileSaveDir).TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;

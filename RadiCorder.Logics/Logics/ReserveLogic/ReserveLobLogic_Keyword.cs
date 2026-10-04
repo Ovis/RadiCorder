@@ -1,3 +1,4 @@
+using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Domain.Reserve;
 using Microsoft.Extensions.Logging;
 using RadiCorder.Logics.Errors;
@@ -513,7 +514,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
 
             foreach (var p in programList)
             {
-                var existingScheduleJob = await reserveRepository.GetScheduleJobByProgramIdAsync(p.ProgramId);
+                var existingScheduleJob = await reserveRepository.GetScheduleJobByProgramKeyAsync(new ProgramKey(p.ServiceKind, p.ProgramId));
 
                 // 既存予約がある場合、キーワード予約由来であれば関連のみ追加してスキップ
                 if (existingScheduleJob != null)

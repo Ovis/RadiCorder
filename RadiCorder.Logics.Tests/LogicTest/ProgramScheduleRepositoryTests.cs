@@ -15,6 +15,22 @@ public class ProgramScheduleRepositoryTests : UnitTestBase
     private RadioDbContext _dbContext = null!;
     private ProgramScheduleRepository _repository = null!;
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task NHK番組IDの別エリア衝突をDB更新前に検出する(bool sameBatch)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var original = new NhkRadiruProgram { ProgramId = "shared", AreaId = "130", StationId = "r1", Title = "前回", StartTime = now, EndTime = now.AddHours(1) };
+        if (!sameBatch) await _repository.UpsertRadiruProgramsAsync([original]);
+        var conflicting = new NhkRadiruProgram { ProgramId = "shared", AreaId = "270", StationId = "r1", Title = "別エリア", StartTime = now, EndTime = now.AddHours(1) };
+        var unrelated = new NhkRadiruProgram { ProgramId = "other", AreaId = "130", StationId = "r1", Title = "追加", StartTime = now, EndTime = now.AddHours(1) };
+        var input = sameBatch ? new[] { original, conflicting, unrelated } : new[] { conflicting, unrelated };
+        Assert.ThrowsAsync<RadiCorder.Logics.Errors.DomainException>(async () => await _repository.UpsertRadiruProgramsAsync(input));
+        var stored = await _dbContext.NhkRadiruPrograms.AsNoTracking().ToListAsync();
+        Assert.That(stored.Count, Is.EqualTo(sameBatch ? 0 : 1));
+        if (!sameBatch) Assert.That(stored.Single().Title, Is.EqualTo("前回"));
+    }
+
     [SetUp]
     public async Task Setup()
     {

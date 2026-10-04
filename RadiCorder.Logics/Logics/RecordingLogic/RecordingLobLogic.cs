@@ -202,7 +202,7 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
                 // タグ統合の取りこぼしを防ぐ。
                 var sameProgramRows = await dbContext.ScheduleJob
                     .AsNoTracking()
-                    .Where(x => x.ProgramId == schedule.ProgramId && x.ReserveType == ReserveType.Keyword)
+                    .Where(x => x.ProgramId == schedule.ProgramId && x.ServiceKind == schedule.ServiceKind && x.ReserveType == ReserveType.Keyword)
                     .Select(x => new { x.Id, x.KeywordReserveId })
                     .ToListAsync();
 

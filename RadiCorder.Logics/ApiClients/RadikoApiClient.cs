@@ -86,6 +86,7 @@ public class RadikoApiClient(
 
             return radikoStationList;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
             logger.ZLogError(e, $"radiko放送局情報取得処理で例外発生");
@@ -133,6 +134,7 @@ public class RadikoApiClient(
 
             return list;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
             logger.ZLogError(e, $"エリア {area} の放送局情報取得に失敗");

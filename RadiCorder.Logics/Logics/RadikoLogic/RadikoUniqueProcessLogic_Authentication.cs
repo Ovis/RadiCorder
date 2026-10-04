@@ -14,7 +14,8 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
     {
         public async ValueTask<(bool IsSuccess, string Session, bool IsPremiumUser, bool IsAreaFree)> TryLoginWithCredentialsAsync(
             string userId,
-            string password)
+            string password,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(password))
             {
@@ -36,7 +37,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                     });
                     return request;
                 },
-                config.ExternalServiceUserAgent);
+                config.ExternalServiceUserAgent, cancellationToken);
 
             // 認証情報不正は 403 を返すため、保存前に失敗として扱う。
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -50,7 +51,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                 return (false, string.Empty, false, false);
             }
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var loginResultEntity = JsonSerializer.Deserialize<RadikoLoginResult>(json);
             if (loginResultEntity == null || string.IsNullOrWhiteSpace(loginResultEntity.RadikoSession))
             {
@@ -67,9 +68,9 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// radikoにログイン
         /// </summary>
         /// <returns></returns>
-        public async ValueTask<(bool IsSuccess, string Session, bool IsPremiumUser, bool IsAreaFree)> LoginRadikoAsync(bool forceRefresh = false)
+        public async ValueTask<(bool IsSuccess, string Session, bool IsPremiumUser, bool IsAreaFree)> LoginRadikoAsync(bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            await AuthenticationCacheLock.WaitAsync();
+            await AuthenticationCacheLock.WaitAsync(cancellationToken);
             try
             {
                 if (forceRefresh)
@@ -97,7 +98,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                     return (false, string.Empty, false, false);
                 }
 
-                var (isSuccess, session, isPremiumUser, isAreaFree) = await TryLoginWithCredentialsAsync(userId, password);
+                var (isSuccess, session, isPremiumUser, isAreaFree) = await TryLoginWithCredentialsAsync(userId, password, cancellationToken);
                 if (!isSuccess)
                 {
                     _cachedSession = null;
@@ -126,9 +127,9 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
 
 
 
-        public async ValueTask<(bool IsSuccess, string Token, string AreaId, string? SubStations)> AuthorizeRadikoAsync(string session = "", bool forceRefresh = false)
+        public async ValueTask<(bool IsSuccess, string Token, string AreaId, string? SubStations)> AuthorizeRadikoAsync(string session = "", bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            await AuthenticationCacheLock.WaitAsync();
+            await AuthenticationCacheLock.WaitAsync(cancellationToken);
             {
                 try
                 {
@@ -163,7 +164,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                                 return (false, string.Empty, string.Empty, null);
                             }
 
-                            var loginResult = await TryLoginWithCredentialsAsync(userId, password);
+                            var loginResult = await TryLoginWithCredentialsAsync(userId, password, cancellationToken);
                             if (!loginResult.IsSuccess)
                             {
                                 _cachedSession = null;
@@ -212,7 +213,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                                 request.Headers.Add("x-radiko-user", "dummy_user");
                                 return request;
                             },
-                            config.ExternalServiceUserAgent);
+                            config.ExternalServiceUserAgent, cancellationToken);
 
                         if (!response.IsSuccessStatusCode)
                         {
@@ -231,7 +232,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         if (string.IsNullOrEmpty(token))
                             return (false, string.Empty, string.Empty, null);
 
-                        var (isSuccess, key) = await GetPartialKeyString();
+                        var (isSuccess, key) = await GetPartialKeyString(cancellationToken);
 
                         if (!isSuccess)
                         {
@@ -261,7 +262,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                             request.Headers.Add("x-radiko-user", "dummy_user");
                             return request;
                         },
-                        config.ExternalServiceUserAgent);
+                        config.ExternalServiceUserAgent, cancellationToken);
                     if (auth2Response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         _cachedAuthorization = null;
@@ -269,7 +270,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         return (false, string.Empty, string.Empty, null);
                     }
 
-                    var body = (await auth2Response.Content.ReadAsStringAsync()).Replace("\r", "").Trim();
+                    var body = (await auth2Response.Content.ReadAsStringAsync(cancellationToken)).Replace("\r", "").Trim();
                     var subStations = GetHeaderValue(auth2Response.Headers, "x-radiko-substation");
 
                     if (string.IsNullOrWhiteSpace(body) || body == "OUT")
@@ -298,6 +299,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
 
                     return (true, token!, areaId, subStations);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception e)
                 {
                     logger.ZLogError(e, $"radiko認証2でエラー");
@@ -315,7 +317,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// </summary>
         /// <param name="session">radikoセッション</param>
         /// <returns>成功可否</returns>
-        public async ValueTask<bool> LogoutRadikoAsync(string session)
+        public async ValueTask<bool> LogoutRadikoAsync(string session, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(session))
                 return false;
@@ -336,9 +338,10 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         });
                         return request;
                     },
-                    config.ExternalServiceUserAgent);
+                    config.ExternalServiceUserAgent, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
                 logger.ZLogWarning(ex, $"radikoログアウトで例外が発生しました。");
@@ -350,7 +353,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// パーシャルキー生成に必要な文字列の取得
         /// </summary>
         /// <returns></returns>
-        public async ValueTask<(bool IsSuccess, string Key)> GetPartialKeyString()
+        public async ValueTask<(bool IsSuccess, string Key)> GetPartialKeyString(CancellationToken cancellationToken = default)
         {
             var key = string.Empty;
             try
@@ -361,8 +364,8 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                     HttpClient,
                     "radiko partial key API",
                     () => new HttpRequestMessage(HttpMethod.Get, "http://radiko.jp/apps/js/playerCommon.js"),
-                    config.ExternalServiceUserAgent);
-                var js = await response.Content.ReadAsStringAsync();
+                    config.ExternalServiceUserAgent, cancellationToken);
+                var js = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 var m = Regex.Match(js, @"new RadikoJSPlayer.*{");
                 if (m.Success)
@@ -370,6 +373,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                     key = m.Value.Split(",")[2].Replace("'", "").Trim();
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception e)
             {
                 logger.ZLogError(e, $"Failed to get partial key");

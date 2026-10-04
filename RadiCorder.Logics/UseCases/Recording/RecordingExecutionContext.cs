@@ -32,7 +32,8 @@ internal sealed class RecordingExecutionContext(
 
         try
         {
-            await UpdateStateRequiredAsync(state, message);
+            using var finalizationCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await UpdateStateRequiredAsync(state, message, finalizationCts.Token);
         }
         catch (Exception ex)
         {
@@ -42,10 +43,11 @@ internal sealed class RecordingExecutionContext(
 
     }
 
-    public async ValueTask UpdateStateRequiredAsync(RecordingState state, string? message)
+    public async ValueTask UpdateStateRequiredAsync(RecordingState state, string? message, CancellationToken? tokenOverride = null)
     {
         if (RecordingId == null) return;
-        await repository.UpdateStateAsync(RecordingId.Value, state, message, cancellationToken);
+        var token = tokenOverride ?? cancellationToken;
+        await repository.UpdateStateAsync(RecordingId.Value, state, message, token);
         try
         {
             await recordingStateEventPublisher.PublishAsync(
@@ -54,7 +56,7 @@ internal sealed class RecordingExecutionContext(
                     state,
                     message,
                     DateTimeOffset.UtcNow),
-                cancellationToken);
+                token);
         }
         catch (Exception ex)
         {
@@ -100,7 +102,8 @@ internal sealed class RecordingExecutionContext(
 
         try
         {
-            await storage.CleanupTempAsync(MediaPath, cancellationToken);
+            using var cleanupCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await storage.CleanupTempAsync(MediaPath, cleanupCts.Token);
         }
         catch (Exception ex)
         {

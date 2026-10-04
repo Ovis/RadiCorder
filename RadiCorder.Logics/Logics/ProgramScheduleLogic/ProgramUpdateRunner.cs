@@ -58,8 +58,8 @@ public class ProgramUpdateRunner(
                 var radiko = scope?.ServiceProvider.GetRequiredService<RadikoUniqueProcessLogic>() ?? radikoUniqueProcessLogic;
                 var stations = scope?.ServiceProvider.GetRequiredService<StationLobLogic>() ?? stationLobLogic;
                 var programs = scope?.ServiceProvider.GetRequiredService<ProgramScheduleLobLogic>() ?? programScheduleLobLogic;
-                if (!(await radiko.RefreshRadikoAreaCacheAsync()).IsSuccess) throw new DomainException("radikoのエリア取得に失敗しました。");
-                await stations.UpsertRadikoStationDefinitionAsync();
+                if (!(await radiko.RefreshRadikoAreaCacheAsync(cancellationToken)).IsSuccess) throw new DomainException("radikoのエリア取得に失敗しました。");
+                await stations.UpsertRadikoStationDefinitionAsync(cancellationToken);
                 (await programs.SynchronizeRadikoProgramsAsync(cancellationToken)).ThrowIfFailed();
                 await programs.DeleteOldRadikoProgramAsync();
             }, cancellationToken);
@@ -96,6 +96,11 @@ public class ProgramUpdateRunner(
                 message: "番組表の更新が完了しました。",
                 isSuccess: true,
                 cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await PublishStatusChangedSafeAsync(programUpdateStatusService.MarkFailed("番組表更新が中断されました。"), CancellationToken.None);
+            throw;
         }
         catch (Exception ex)
         {

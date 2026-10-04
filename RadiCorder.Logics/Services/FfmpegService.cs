@@ -109,6 +109,10 @@ namespace RadiCorder.Logics.Services
 
                 return result;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (OperationCanceledException e)
             {
                 logger.ZLogError(e, $"タイムアウト: FFmpegプロセスが指定時間内に終了しませんでした。");
@@ -252,6 +256,7 @@ namespace RadiCorder.Logics.Services
                                 logger.ZLogError(ex, $"FFmpegプロセスの強制終了に失敗しました。");
                             }
                         }
+                        token.ThrowIfCancellationRequested();
                         return false;
                     }
                 }
@@ -259,6 +264,10 @@ namespace RadiCorder.Logics.Services
                 {
                     linkedCts.Cancel();
                 }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception e)
             {

@@ -12,6 +12,7 @@ public static class RecordingJobErrorClassifier
     /// </summary>
     public static ScheduleJobErrorCode ClassifyError(Exception? exception)
     {
+        if (exception is RadiCorder.Logics.Errors.RecordingFailureException failure) return failure.ErrorCode;
         if (exception == null)
         {
             return ScheduleJobErrorCode.Unknown;
@@ -21,6 +22,7 @@ public static class RecordingJobErrorClassifier
         {
             return ScheduleJobErrorCode.Cancelled;
         }
+        if (exception is IOException or UnauthorizedAccessException) return ScheduleJobErrorCode.IoError;
 
         var message = exception.Message;
         if (string.IsNullOrWhiteSpace(message))

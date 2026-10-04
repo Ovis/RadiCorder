@@ -56,7 +56,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
         /// らじる★らじるの放送局情報を更新
         /// </summary>
         /// <returns></returns>
-        public async ValueTask<bool> UpdateRadiruStationInformationAsync()
+        public async ValueTask<bool> UpdateRadiruStationInformationAsync(CancellationToken cancellationToken = default)
         {
             List<NhkRadiruArea> areaDefinitions;
             List<NhkRadiruAreaService> serviceDefinitions;
@@ -68,15 +68,15 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 request.Headers.AcceptLanguage.ParseAdd("ja-JP,ja;q=0.9,en;q=0.8");
                 request.Headers.TryAddWithoutValidation("User-Agent", config.ExternalServiceUserAgent);
 
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     logger.ZLogError($"らじる★らじるの設定XML取得に失敗: StatusCode={response.StatusCode}");
                     response.EnsureSuccessStatusCode();
                 }
 
-                await using var responseStream = await response.Content.ReadAsStreamAsync();
-                var doc = await XDocument.LoadAsync(responseStream, LoadOptions.None, CancellationToken.None);
+                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                var doc = await XDocument.LoadAsync(responseStream, LoadOptions.None, cancellationToken);
 
                 var programNowOnAirUrlTemplate = GetDescendantValue(doc, "url_program_noa");
                 var programDetailApiUrlTemplate = GetDescendantValue(doc, "url_program_detail");
@@ -157,7 +157,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
 
             try
             {
-                await stationRepository.UpsertRadiruAreasAndServicesAsync(areaDefinitions, serviceDefinitions);
+                await stationRepository.UpsertRadiruAreasAndServicesAsync(areaDefinitions, serviceDefinitions, cancellationToken);
             }
             catch (Exception e)
             {
@@ -200,7 +200,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
                 }
             }
 
-            await UpdateRadiruStationInformationAsync();
+            await UpdateRadiruStationInformationAsync(cancellationToken);
             await config.UpdateRadiruStationDefinitionLastCheckedAtAsync(appContext.StandardDateTimeOffset.ToUniversalTime());
             return true;
         }

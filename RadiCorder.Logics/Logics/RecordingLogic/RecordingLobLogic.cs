@@ -77,7 +77,9 @@ namespace RadiCorder.Logics.Logics.RecordingLogic
                         logLevel: LogLevel.Error,
                         category: NoticeCategory.RecordingError,
                         message: $"{programName} の録音に失敗しました。理由: {errorMessage}");
-                    return (false, new DomainException(errorMessage));
+                    return (false, result.ErrorCode == ScheduleJobErrorCode.Cancelled
+                        ? new OperationCanceledException(errorMessage, cancellationToken)
+                        : new RecordingFailureException(result.ErrorCode, errorMessage));
                 }
 
                 await notificationLobLogic.SetNotificationAsync(

@@ -24,7 +24,8 @@ public class RecordingScheduleBackgroundService(
     IRecordingScheduleWakeup recordingScheduleWakeup) : BackgroundService
 {
     private static readonly TimeSpan PeriodicScanInterval = TimeSpan.FromSeconds(30);
-    private static readonly ConcurrentDictionary<Ulid, byte> RunningJobMap = new();
+    private readonly ConcurrentDictionary<Ulid, byte> RunningJobMap = new();
+    private readonly ConcurrentDictionary<Ulid, Task> RunningTasks = new();
 
     /// <summary>
     /// サービス本体。
@@ -36,53 +37,64 @@ public class RecordingScheduleBackgroundService(
 
         await RecoverJobsOnStartupAsync(stoppingToken);
 
-        var nextPeriodicAtUtc = DateTimeOffset.UtcNow.Add(PeriodicScanInterval);
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            var nextPeriodicAtUtc = DateTimeOffset.UtcNow.Add(PeriodicScanInterval);
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await QueueDueJobsAsync(stoppingToken);
-                var nextDelay = await CalculateNextOneShotDelayAsync(stoppingToken);
-                var wakeupTask = recordingScheduleWakeup.WaitAsync(stoppingToken).AsTask();
-                var nowUtc = DateTimeOffset.UtcNow;
-
-                while (nextPeriodicAtUtc <= nowUtc)
+                try
                 {
-                    nextPeriodicAtUtc = nextPeriodicAtUtc.Add(PeriodicScanInterval);
-                }
+                    await QueueDueJobsAsync(stoppingToken);
+                    var nextDelay = await CalculateNextOneShotDelayAsync(stoppingToken);
+                    using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                    var wakeupTask = recordingScheduleWakeup.WaitAsync(waitCts.Token).AsTask();
+                    var nowUtc = DateTimeOffset.UtcNow;
 
-                var periodicDelay = nextPeriodicAtUtc - nowUtc;
-                var periodicTask = Task.Delay(periodicDelay, stoppingToken);
+                    while (nextPeriodicAtUtc <= nowUtc)
+                    {
+                        nextPeriodicAtUtc = nextPeriodicAtUtc.Add(PeriodicScanInterval);
+                    }
 
-                if (!nextDelay.HasValue)
-                {
-                    var completedTask = await Task.WhenAny(periodicTask, wakeupTask);
+                    var periodicDelay = nextPeriodicAtUtc - nowUtc;
+                    var periodicTask = Task.Delay(periodicDelay, waitCts.Token);
 
-                    if (completedTask == wakeupTask)
+                    if (!nextDelay.HasValue)
+                    {
+                        var completedTask = await Task.WhenAny(periodicTask, wakeupTask);
+                        await waitCts.CancelAsync();
+
+                        if (completedTask == wakeupTask)
+                        {
+                            logger.ZLogDebug($"録音スケジューラが起床通知で再評価を再開します。");
+                        }
+
+                        continue;
+                    }
+
+                    var oneShotTask = Task.Delay(nextDelay.Value, waitCts.Token);
+                    var completed = await Task.WhenAny(periodicTask, oneShotTask, wakeupTask);
+                    await waitCts.CancelAsync();
+
+                    if (completed == wakeupTask)
                     {
                         logger.ZLogDebug($"録音スケジューラが起床通知で再評価を再開します。");
                     }
-
-                    continue;
                 }
-
-                var oneShotTask = Task.Delay(nextDelay.Value, stoppingToken);
-                var completed = await Task.WhenAny(periodicTask, oneShotTask, wakeupTask);
-
-                if (completed == wakeupTask)
+                catch (OperationCanceledException)
                 {
-                    logger.ZLogDebug($"録音スケジューラが起床通知で再評価を再開します。");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    logger.ZLogError(ex, $"録音スケジューラループでエラーが発生しました。");
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }
             }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                logger.ZLogError(ex, $"録音スケジューラループでエラーが発生しました。");
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-            }
+
+        }
+        finally
+        {
+            await Task.WhenAll(RunningTasks.Values);
         }
 
         logger.ZLogInformation($"録音スケジューラサービスを終了しました。");
@@ -153,17 +165,22 @@ public class RecordingScheduleBackgroundService(
                 continue;
             }
 
-            _ = Task.Run(async () =>
+            foreach (var completed in RunningTasks.Where(x => x.Value.IsCompleted).ToList()) RunningTasks.TryRemove(completed.Key, out _);
+            RunningTasks[jobId] = Task.Run(async () =>
             {
                 try
                 {
                     await ExecuteQueuedJobAsync(jobId, cancellationToken);
                 }
+                catch (Exception ex)
+                {
+                    logger.ZLogError(ex, $"録音ジョブの実行でエラーが発生しました。 jobId={jobId}");
+                }
                 finally
                 {
                     RunningJobMap.TryRemove(jobId, out _);
                 }
-            }, cancellationToken);
+            });
         }
     }
 

@@ -9,4 +9,7 @@ namespace RadiCorder.Logics.Domain.Recording;
 public record RecordingResult(
     bool IsSuccess,
     Ulid? RecordingId,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null)
+{
+    public RadiCorder.Logics.Models.Enums.ScheduleJobErrorCode ErrorCode { get; init; } = RadiCorder.Logics.Models.Enums.ScheduleJobErrorCode.Unknown;
+}

@@ -67,7 +67,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// radikoのエリアを取得する
         /// </summary>
         /// <returns></returns>
-        public async ValueTask<(bool IsSuccess, string Area)> GetRadikoAreaAsync(bool forceRefresh = false)
+        public async ValueTask<(bool IsSuccess, string Area)> GetRadikoAreaAsync(bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             if (forceRefresh)
             {
@@ -79,7 +79,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                 return (true, cachedArea);
             }
 
-            var result = await FetchRadikoAreaAsync();
+            var result = await FetchRadikoAreaAsync(cancellationToken);
             if (result.IsSuccess && !string.IsNullOrWhiteSpace(result.Area))
             {
                 AreaCache.Set(RadikoAreaCacheKey, result.Area, AreaCacheTtl);
@@ -91,9 +91,9 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// <summary>
         /// radikoエリアのキャッシュを破棄して再取得する
         /// </summary>
-        public ValueTask<(bool IsSuccess, string Area)> RefreshRadikoAreaCacheAsync()
+        public ValueTask<(bool IsSuccess, string Area)> RefreshRadikoAreaCacheAsync(CancellationToken cancellationToken = default)
         {
-            return GetRadikoAreaAsync(forceRefresh: true);
+            return GetRadikoAreaAsync(forceRefresh: true, cancellationToken);
         }
 
         public static string? ResolveSubStationId(string areaId, string stationId, string? subStations)
@@ -126,7 +126,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
             return null;
         }
 
-        private async ValueTask<(bool IsSuccess, string Area)> FetchRadikoAreaAsync()
+        private async ValueTask<(bool IsSuccess, string Area)> FetchRadikoAreaAsync(CancellationToken cancellationToken)
         {
             using var response = await HttpClientExecutionHelper.SendWithRetryAsync(
                 logger,
@@ -138,14 +138,14 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                     request.Headers.Add("Accept-Encoding", "gzip");
                     return request;
                 },
-                config.ExternalServiceUserAgent);
+                config.ExternalServiceUserAgent, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 return (false, string.Empty);
             }
 
-            var text = await response.Content.ReadAsStringAsync();
+            var text = await response.Content.ReadAsStringAsync(cancellationToken);
             var m = Regex.Match(text, @"JP[0-9]+");
 
             return m.Success ? (true, m.Value) : (false, string.Empty);

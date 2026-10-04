@@ -28,6 +28,21 @@ public class RecordingJobExecutor(
     /// </summary>
     public async ValueTask ExecuteAsync(Ulid jobId, CancellationToken cancellationToken)
     {
+        using var recordCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        RecordingCancellationRegistry.Register(jobId.ToString(), recordCts);
+        try
+        {
+            await ExecuteCoreAsync(jobId, recordCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            await MarkJobFailedAsync(dbContext, new ScheduleJob { Id = jobId }, ScheduleJobErrorCode.Cancelled, "録音ジョブがキャンセルされました。", default, isCancelled: true);
+        }
+        finally { RecordingCancellationRegistry.Unregister(jobId.ToString()); }
+    }
+
+    private async ValueTask ExecuteCoreAsync(Ulid jobId, CancellationToken cancellationToken)
+    {
         var job = await dbContext.ScheduleJob
             .Where(x => x.Id == jobId && x.IsEnabled)
             .FirstOrDefaultAsync(cancellationToken);
@@ -72,9 +87,6 @@ public class RecordingJobExecutor(
 
         logger.ZLogDebug($"録音ジョブを開始します。 jobId={jobId}");
 
-        using var recordCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        RecordingCancellationRegistry.Register(jobId.ToString(), recordCts);
-
         try
         {
             var startDelaySeconds = job.StartDelay?.TotalSeconds ?? appConfigurationService.RecordStartDuration.TotalSeconds;
@@ -114,7 +126,7 @@ public class RecordingJobExecutor(
                 outputDirectoryRelativePathOverride: outputDirectoryRelativePathOverride,
                 outputFileNameTemplateOverride: outputFileNameTemplateOverride,
                 deleteScheduleOnFinish: false,
-                cancellationToken: recordCts.Token);
+                cancellationToken: cancellationToken);
 
             if (!isSuccess)
             {
@@ -156,10 +168,6 @@ public class RecordingJobExecutor(
             logger.ZLogError(ex, $"録音ジョブ実行で例外が発生しました。 jobId={jobId}");
             await MarkJobFailedAsync(dbContext, job, RecordingJobErrorClassifier.ClassifyError(ex), ex.Message, cancellationToken);
         }
-        finally
-        {
-            RecordingCancellationRegistry.Unregister(jobId.ToString());
-        }
     }
 
     /// <summary>
@@ -173,16 +181,17 @@ public class RecordingJobExecutor(
         CancellationToken cancellationToken,
         bool isCancelled = false)
     {
-        var nextState = isCancelled ? ScheduleJobState.Cancelled : ScheduleJobState.Failed;
+        using var finalizationCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var nextState = isCancelled || errorCode == ScheduleJobErrorCode.Cancelled ? ScheduleJobState.Cancelled : ScheduleJobState.Failed;
         await dbContext.ScheduleJob
-            .Where(x => x.Id == job.Id)
+            .Where(x => x.Id == job.Id && x.IsEnabled && x.State != ScheduleJobState.Completed && x.State != ScheduleJobState.Cancelled && x.State != ScheduleJobState.Failed)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.State, nextState)
                 .SetProperty(x => x.LastErrorCode, errorCode)
                 .SetProperty(x => x.LastErrorDetail, detail)
                 .SetProperty(x => x.CompletedUtc, DateTimeOffset.UtcNow)
                 .SetProperty(x => x.IsEnabled, false)
-                .SetProperty(x => x.RetryCount, x => x.RetryCount + 1), cancellationToken);
+                .SetProperty(x => x.RetryCount, x => x.RetryCount + 1), finalizationCts.Token);
     }
 
     /// <summary>

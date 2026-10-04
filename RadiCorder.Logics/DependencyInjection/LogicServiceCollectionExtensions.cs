@@ -127,6 +127,7 @@ public static class LogicServiceCollectionExtensions
     private static IServiceCollection AddProgramScheduleServices(this IServiceCollection services)
     {
         services.AddSingleton<IProgramUpdateStatusService, ProgramUpdateStatusService>();
+        services.AddSingleton<ProgramUpdateQueue>();
         services.AddScoped<IRadioAppContext, RadioAppContext>();
         services.AddScoped<IStationRepository, StationRepository>();
         services.AddScoped<IProgramScheduleRepository, ProgramScheduleRepository>();
@@ -186,6 +187,7 @@ public static class LogicServiceCollectionExtensions
         services.AddSingleton<IRecordingScheduleWakeup, RecordingScheduleWakeup>();
         services.AddHostedService<RecordingScheduleBackgroundService>();
         services.AddHostedService<ProgramUpdateScheduleBackgroundService>();
+        services.AddHostedService<ProgramUpdateWorker>();
         services.AddHostedService<MaintenanceCleanupScheduleBackgroundService>();
         services.AddHostedService<StorageCapacityMonitorBackgroundService>();
         services.AddHostedService<ClockSkewMonitorBackgroundService>();

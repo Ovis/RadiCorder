@@ -24,13 +24,15 @@ public static class HttpClientExecutionHelper
         string operationName,
         Func<HttpRequestMessage> requestFactory,
         string? userAgent = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<CancellationToken, ValueTask>? beforeAttempt = null)
     {
         return await ApiRetryPolicy.ExecuteAsync(
             logger,
             operationName,
             async ct =>
             {
+                if (beforeAttempt != null) await beforeAttempt(ct);
                 using var request = requestFactory();
                 if (!string.IsNullOrWhiteSpace(userAgent) &&
                     !request.Headers.Contains("User-Agent"))
@@ -40,8 +42,13 @@ public static class HttpClientExecutionHelper
                 var response = await httpClient.SendAsync(request, ct);
                 if (IsTransientFailure(response.StatusCode))
                 {
+                    var retryAfter = response.Headers.RetryAfter;
+                    var delay = retryAfter?.Delta ?? (retryAfter?.Date - DateTimeOffset.UtcNow);
+                    // 長時間の待機を要求された場合は、その場で再試行せず呼び出し側へ返す。
+                    if (delay > TimeSpan.FromHours(1)) return response;
+                    var statusCode = response.StatusCode;
                     response.Dispose();
-                    throw new HttpRequestException($"{operationName} request failed: {(int)response.StatusCode}");
+                    throw new TransientHttpRequestException($"{operationName} request failed: {(int)statusCode}", statusCode, delay);
                 }
 
                 return response;
@@ -56,4 +63,10 @@ public static class HttpClientExecutionHelper
                status == (int)HttpStatusCode.TooManyRequests ||
                status >= 500;
     }
+}
+
+internal sealed class TransientHttpRequestException(string message, HttpStatusCode statusCode, TimeSpan? retryAfter)
+    : HttpRequestException(message, null, statusCode)
+{
+    public TimeSpan? RetryAfter { get; } = retryAfter;
 }

@@ -20,6 +20,7 @@ public class ProgramApiFailureTests
     [TestCase(HttpStatusCode.InternalServerError, "unavailable")]
     [TestCase(HttpStatusCode.OK, "<changed />")]
     [TestCase(HttpStatusCode.OK, "broken XML")]
+    [TestCase(HttpStatusCode.OK, "<radiko><station id='TBS'/><station id='OTHER'/></radiko>")]
     [TestCase(HttpStatusCode.OK, "<radiko><station id='TBS'><prog ft='invalid' to='invalid' /></station></radiko>")]
     public void Radiko_通信や形式の異常を正常な空データにしない(HttpStatusCode status, string body)
     {

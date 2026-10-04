@@ -34,9 +34,9 @@ namespace RadiCorder.Logics.Logics.StationLogic
         {
             // クライアントから放送局情報を取得
             var radikoStationList = await radikoApiClient.GetRadikoStationsAsync(cancellationToken);
-            if (radikoStationList.Count == 0)
+            if (radikoStationList.Count == 0 || radikoStationList.Any(x => string.IsNullOrWhiteSpace(x.StationId)))
             {
-                throw new DomainException("radiko放送局情報が空のため同期を中止しました。");
+                throw new DomainException("radiko放送局情報が空または局IDが欠落しているため同期を中止しました。");
             }
 
             try

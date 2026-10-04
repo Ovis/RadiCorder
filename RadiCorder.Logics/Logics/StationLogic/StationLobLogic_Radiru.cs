@@ -92,7 +92,7 @@ namespace RadiCorder.Logics.Logics.StationLogic
                     if (string.IsNullOrWhiteSpace(areaId))
                     {
                         logger.ZLogWarning($"らじる★らじる設定XMLで areakey が空のためスキップしました。");
-                        continue;
+                        throw new RadiCorder.Logics.Errors.DomainException("らじるの局定義でエリアIDが欠落しています。既存DBを保持します。");
                     }
 
                     var areaName = GetDescendantValue(data, "areajp");

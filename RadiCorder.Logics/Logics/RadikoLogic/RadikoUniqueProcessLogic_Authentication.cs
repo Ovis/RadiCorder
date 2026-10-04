@@ -1,7 +1,7 @@
+using RadiCorder.Logics.Providers.Radiko;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Web;
 using RadiCorder.Logics.Application;
 using RadiCorder.Logics.Errors;
@@ -229,12 +229,12 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         int.TryParse(GetHeaderValue(response.Headers, "X-Radiko-KeyLength"), out var keyLength);
                         int.TryParse(GetHeaderValue(response.Headers, "X-Radiko-KeyOffset"), out var keyOffset);
 
-                        if (string.IsNullOrEmpty(token))
+                        if (string.IsNullOrWhiteSpace(token) || keyLength <= 0 || keyOffset < 0)
                             return (false, string.Empty, string.Empty, null);
 
                         var (isSuccess, key) = await GetPartialKeyString(cancellationToken);
 
-                        if (!isSuccess)
+                        if (!isSuccess || keyLength > key.Length || keyOffset > key.Length - keyLength)
                         {
                             return (false, string.Empty, string.Empty, null);
                         }
@@ -270,6 +270,8 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         return (false, string.Empty, string.Empty, null);
                     }
 
+                    if (!auth2Response.IsSuccessStatusCode) return (false, string.Empty, string.Empty, null);
+
                     var body = (await auth2Response.Content.ReadAsStringAsync(cancellationToken)).Replace("\r", "").Trim();
                     var subStations = GetHeaderValue(auth2Response.Headers, "x-radiko-substation");
 
@@ -283,7 +285,7 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         .Split(',')[0]
                         .Trim();
 
-                    if (string.IsNullOrWhiteSpace(areaId))
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(areaId, @"^JP[0-9]{1,3}$"))
                     {
                         _cachedAuthorization = null;
                         return (false, string.Empty, string.Empty, null);
@@ -339,7 +341,17 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
                         return request;
                     },
                     config.ExternalServiceUserAgent, cancellationToken);
-                return response.IsSuccessStatusCode;
+                if (!response.IsSuccessStatusCode) return false;
+                await AuthenticationCacheLock.WaitAsync(cancellationToken);
+                try
+                {
+                    if (_cachedSession is { } cachedSession && cachedSession.ScopeId == _authenticationCacheScopeId && cachedSession.Session == session)
+                        _cachedSession = null;
+                    if (_cachedAuthorization is { } cachedAuthorization && cachedAuthorization.ScopeId == _authenticationCacheScopeId && cachedAuthorization.Session == session)
+                        _cachedAuthorization = null;
+                }
+                finally { AuthenticationCacheLock.Release(); }
+                return true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception ex)
@@ -355,32 +367,22 @@ namespace RadiCorder.Logics.Logics.RadikoLogic
         /// <returns></returns>
         public async ValueTask<(bool IsSuccess, string Key)> GetPartialKeyString(CancellationToken cancellationToken = default)
         {
-            var key = string.Empty;
             try
             {
-                // partial keyの元を取得
                 using var response = await HttpClientExecutionHelper.SendWithRetryAsync(
-                    logger,
-                    HttpClient,
-                    "radiko partial key API",
+                    logger, HttpClient, "radiko partial key API",
                     () => new HttpRequestMessage(HttpMethod.Get, "http://radiko.jp/apps/js/playerCommon.js"),
                     config.ExternalServiceUserAgent, cancellationToken);
+                response.EnsureSuccessStatusCode();
                 var js = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                var m = Regex.Match(js, @"new RadikoJSPlayer.*{");
-                if (m.Success)
-                {
-                    key = m.Value.Split(",")[2].Replace("'", "").Trim();
-                }
+                return RadikoAuthenticationParser.TryGetPartialKey(js, out var key) ? (true, key) : (false, string.Empty);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception e)
             {
-                logger.ZLogError(e, $"Failed to get partial key");
+                logger.ZLogError(e, $"パーシャルキーの取得または解析に失敗しました。");
                 return (false, string.Empty);
             }
-
-            return (true, key);
         }
 
         private static string? GetHeaderValue(HttpResponseHeaders headers, string headerName)

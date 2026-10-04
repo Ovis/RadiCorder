@@ -25,6 +25,7 @@ internal static class ApiRetryPolicy
         CancellationToken cancellationToken,
         int maxAttempts = 3)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxAttempts, 1);
         var delay = TimeSpan.FromMilliseconds(200);
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -41,6 +42,10 @@ internal static class ApiRetryPolicy
             }
             catch (HttpRequestException ex) when (attempt < maxAttempts)
             {
+                if (ex is TransientHttpRequestException { RetryAfter: { } requestedDelay })
+                {
+                    delay = requestedDelay > TimeSpan.Zero ? requestedDelay : TimeSpan.Zero;
+                }
                 logger.ZLogWarning(ex, $"{operationName} で通信エラーが発生しました。再試行します。");
             }
 
@@ -48,6 +53,6 @@ internal static class ApiRetryPolicy
             delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 1000));
         }
 
-        return await action(cancellationToken);
+        throw new InvalidOperationException("再試行処理が終了状態を返しませんでした。");
     }
 }

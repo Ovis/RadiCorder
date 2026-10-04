@@ -57,8 +57,6 @@ public class RadiruApiClient(
                 .Replace("{service}", serviceId)
                 .Replace("[YYYY-MM-DD]", date.ToString("yyyy-MM-dd"));
 
-            await WaitForRadiruRequestSlotAsync(cancellationToken);
-
             using var response = await HttpClientExecutionHelper.SendWithRetryAsync(
                 logger,
                 HttpClient,
@@ -70,7 +68,8 @@ public class RadiruApiClient(
                     return request;
                 },
                 config.ExternalServiceUserAgent,
-                cancellationToken);
+                cancellationToken,
+                beforeAttempt: WaitForRadiruRequestSlotAsync);
 
             response.EnsureSuccessStatusCode();
 

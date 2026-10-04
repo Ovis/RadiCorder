@@ -129,16 +129,17 @@ public class PlayProgramLobLogicTests
         IProgramScheduleRepository repository,
         string area = "JP13",
         IStationRepository? stationRepository = null,
-        string? subStations = null)
+        string? subStations = null,
+        bool hasCredentials = true)
     {
         var configMock = new Mock<IAppConfigurationService>();
         configMock.SetupGet(c => c.RadikoOptions).Returns(new Options.RadikoOptions
         {
-            RadikoUserId = "user",
-            RadikoPassword = "pass"
+            RadikoUserId = hasCredentials ? "user" : string.Empty,
+            RadikoPassword = hasCredentials ? "pass" : string.Empty
         });
         configMock.Setup(c => c.TryGetRadikoCredentialsAsync())
-            .Returns(ValueTask.FromResult((true, "user", "pass")));
+            .Returns(ValueTask.FromResult((hasCredentials, hasCredentials ? "user" : string.Empty, hasCredentials ? "pass" : string.Empty)));
         var dic = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
         dic.TryAdd(stationId, "Station");
         configMock.SetupGet(c => c.RadikoStationDic).Returns(dic);
@@ -198,7 +199,8 @@ public class PlayProgramLobLogicTests
         IProgramScheduleRepository repository,
         string area = "JP13",
         IStationRepository? stationRepository = null,
-        string? subStations = null)
+        string? subStations = null,
+        bool hasCredentials = true)
     {
         return CreateTargetCore(
             stationId,
@@ -210,7 +212,8 @@ public class PlayProgramLobLogicTests
             repository,
             area,
             stationRepository,
-            subStations).Logic;
+            subStations,
+            hasCredentials).Logic;
     }
 
     [Test]
@@ -230,8 +233,9 @@ public class PlayProgramLobLogicTests
         Assert.That(error!.Message, Is.EqualTo("番組情報の取得に失敗しました。"));
     }
 
-    [Test]
-    public async Task PlayRadikoProgramAsync_エリア外かつ非プレミアムは失敗()
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task PlayRadikoProgramAsync_エリア外かつ非プレミアムは失敗(bool hasCredentials)
     {
         var repository = new FakeProgramScheduleRepository
         {
@@ -262,7 +266,7 @@ public class PlayProgramLobLogicTests
         });
         await _dbContext.SaveChangesAsync();
 
-        var logic = CreateTarget("OUT", isPremium: false, isAreaFree: null, currentAreaStations: ["IN"], realTimeUrls: [], realTimeUrlsForAreaFree: null, repository, area: "JP11");
+        var logic = CreateTarget("OUT", isPremium: false, isAreaFree: null, currentAreaStations: ["IN"], realTimeUrls: [], realTimeUrlsForAreaFree: null, repository, area: "JP11", hasCredentials: hasCredentials);
 
         var (isSuccess, _, _, error) = await logic.PlayRadikoProgramAsync("P1");
 
@@ -271,8 +275,9 @@ public class PlayProgramLobLogicTests
         Assert.That(error!.Message, Is.EqualTo("この番組は地域が異なるため再生できませんでした。異なる地域の番組を再生する場合はプレミアム会員としてログインする必要があります。"));
     }
 
-    [Test]
-    public async Task PlayRadikoProgramAsync_成功時はトークンとURLを返す()
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task PlayRadikoProgramAsync_成功時はトークンとURLを返す(bool hasCredentials)
     {
         var repository = new FakeProgramScheduleRepository
         {
@@ -311,7 +316,8 @@ public class PlayProgramLobLogicTests
             realTimeUrls: ["https://si-f-radiko.smartstream.ne.jp/so/playlist.m3u8?station_id=TBS&l=15&lsid=test-session&type=b"],
             realTimeUrlsForAreaFree: ["https://si-c-radiko.smartstream.ne.jp/so/playlist.m3u8?station_id=TBS&l=15&lsid=af-session&type=c"],
             repository,
-            area: "JP12");
+            area: "JP12",
+            hasCredentials: hasCredentials);
 
         var (isSuccess, token, url, error) = await logic.PlayRadikoProgramAsync("P1");
 

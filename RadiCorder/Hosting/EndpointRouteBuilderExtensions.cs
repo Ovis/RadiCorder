@@ -1,4 +1,5 @@
 using RadiCorder.Endpoints;
+using RadiCorder.Filters;
 using RadiCorder.Features.General;
 using RadiCorder.Features.Notification;
 using RadiCorder.Features.Program;
@@ -17,15 +18,16 @@ public static class EndpointRouteBuilderExtensions
 {
     public static IEndpointRouteBuilder MapRadiCorderEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapApiEndpoints();
-        endpoints.MapGeneralEndpoints();
-        endpoints.MapProgramEndpoints();
-        endpoints.MapSettingEndpoints();
-        endpoints.MapExternalImportEndpoints();
-        endpoints.MapRecordingEndpoints();
-        endpoints.MapNotificationEndpoints();
-        endpoints.MapTagEndpoints();
-        endpoints.MapReserveEndpoints();
+        var api = endpoints.MapGroup("").AddEndpointFilter<ApiExceptionEndpointFilter>();
+        api.MapApiEndpoints();
+        api.MapGeneralEndpoints();
+        api.MapProgramEndpoints();
+        api.MapSettingEndpoints();
+        api.MapExternalImportEndpoints();
+        api.MapRecordingEndpoints();
+        api.MapNotificationEndpoints();
+        api.MapTagEndpoints();
+        api.MapReserveEndpoints();
         endpoints.MapHub<RecordingHub>("/hubs/recordings");
         endpoints.MapHub<NotificationHub>("/hubs/notifications");
         endpoints.MapHub<ReserveHub>("/hubs/reserves");

@@ -20,76 +20,32 @@ export const setInnerHtml = (element: HTMLElement, selector: string, html: strin
     if (target) target.innerHTML = html;
 };
 
-/**
- * 許可タグのみ残す簡易サニタイズ
- * - 未許可タグは中身を残して展開
- * - 未許可属性は削除
- */
+declare const DOMPurify: { sanitize(input: string, options: {
+    ALLOWED_TAGS: string[]; ALLOWED_ATTR: string[]; ALLOW_DATA_ATTR: boolean; ALLOW_ARIA_ATTR: boolean;
+}): string };
+
+/** 許可する書式を維持し、外部由来HTMLの入れ子や属性も検証する。 */
 export const sanitizeHtml = (input: string): string => {
     if (!input) return '';
-
-    const allowedTags = new Set([
-        'br', 'b', 'strong', 'i', 'em', 'u',
-        'p', 'ul', 'ol', 'li', 'span',
-        'code', 'pre', 'small', 'sup', 'sub',
-        'a'
-    ]);
-    const allowedAttrsByTag: Record<string, Set<string>> = {
-        a: new Set(['href', 'title', 'target', 'rel'])
-    };
-
-    const doc = new DOMParser().parseFromString(input, 'text/html');
-
-    const sanitizeNode = (node: Node): void => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node as HTMLElement;
-            const tag = el.tagName.toLowerCase();
-
-            if (!allowedTags.has(tag)) {
-                const parent = el.parentNode;
-                if (parent) {
-                    while (el.firstChild) {
-                        parent.insertBefore(el.firstChild, el);
-                    }
-                    parent.removeChild(el);
-                    return;
-                }
-            } else {
-                const allowedAttrs = allowedAttrsByTag[tag] ?? new Set<string>();
-                Array.from(el.attributes).forEach(attr => {
-                    if (!allowedAttrs.has(attr.name.toLowerCase())) {
-                        el.removeAttribute(attr.name);
-                    }
-                });
-
-                if (tag === 'a') {
-                    const href = el.getAttribute('href') ?? '';
-                    let safe = false;
-                    try {
-                        const url = new URL(href, window.location.origin);
-                        safe = url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:';
-                    } catch {
-                        safe = false;
-                    }
-                    if (!safe) {
-                        el.removeAttribute('href');
-                    }
-
-                    const target = (el.getAttribute('target') ?? '').toLowerCase();
-                    if (target === '_blank') {
-                        el.setAttribute('rel', 'noopener noreferrer');
-                    }
-                }
-            }
-        } else if (node.nodeType === Node.COMMENT_NODE) {
-            node.parentNode?.removeChild(node);
+    const purified = DOMPurify.sanitize(input, {
+        ALLOWED_TAGS: ['br', 'b', 'strong', 'i', 'em', 'u', 'p', 'ul', 'ol', 'li', 'span', 'code', 'pre', 'small', 'sup', 'sub', 'a'],
+        ALLOWED_ATTR: ['href', 'title', 'target', 'rel'],
+        ALLOW_DATA_ATTR: false,
+        ALLOW_ARIA_ATTR: false
+    });
+    const doc = new DOMParser().parseFromString(purified, 'text/html');
+    doc.body.querySelectorAll<HTMLElement>('*').forEach(el => {
+        if (el.tagName.toLowerCase() !== 'a') {
+            Array.from(el.attributes).forEach(attr => el.removeAttribute(attr.name));
             return;
         }
-
-        Array.from(node.childNodes).forEach(child => sanitizeNode(child));
-    };
-
-    Array.from(doc.body.childNodes).forEach(child => sanitizeNode(child));
+        // リンクは従来どおりHTTP・HTTPS・メールと同一オリジンの相対URLに限定する。
+        try {
+            const url = new URL(el.getAttribute('href') ?? '', window.location.origin);
+            if (!['http:', 'https:', 'mailto:'].includes(url.protocol)) el.removeAttribute('href');
+        } catch { el.removeAttribute('href'); }
+        if ((el.getAttribute('target') ?? '').toLowerCase() === '_blank') el.setAttribute('rel', 'noopener noreferrer');
+    });
     return doc.body.innerHTML;
 };
 

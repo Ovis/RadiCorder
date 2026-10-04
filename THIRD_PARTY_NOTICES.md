@@ -25,6 +25,7 @@
 
 | Package | License | URL |
 |---|---|---|
+| DOMPurify | Apache-2.0 OR MPL-2.0 | https://github.com/cure53/DOMPurify |
 | tailwindcss | MIT | https://github.com/tailwindlabs/tailwindcss |
 | typescript | Apache-2.0 | https://github.com/microsoft/TypeScript |
 | ts-node | MIT | https://github.com/TypeStrong/ts-node |
@@ -33,6 +34,7 @@
 
 | Package | License | URL |
 |---|---|---|
+| jsdom | MIT | https://github.com/jsdom/jsdom |
 | Microsoft.NET.Test.Sdk | MIT | https://github.com/microsoft/vstest |
 | Moq | BSD-3-Clause | https://github.com/devlooped/moq |
 | NUnit | MIT | https://github.com/nunit/nunit |

@@ -3,6 +3,10 @@ import { dirname, resolve } from 'node:path';
 
 const mappings = [
     {
+        source: resolve('node_modules/dompurify/dist/purify.min.js'),
+        destination: resolve('wwwroot/lib/dompurify/purify.min.js')
+    },
+    {
         source: resolve('node_modules/hls.js/dist/hls.min.js'),
         destination: resolve('wwwroot/lib/hls.js/hls.min.js')
     },

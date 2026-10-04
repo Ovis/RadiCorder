@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using RadiCorder.Logics.Context;
 using RadiCorder.Logics.Domain.ProgramSchedule;
 using RadiCorder.Logics.Domain.Reserve;
@@ -27,7 +28,8 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
         NotificationLobLogic notificationLobLogic,
         TagLobLogic tagLobLogic,
         IEntryMapper entryMapper,
-        IReserveScheduleEventPublisher? reserveScheduleEventPublisher = null)
+        IReserveScheduleEventPublisher? reserveScheduleEventPublisher = null,
+        IServiceScopeFactory? serviceScopeFactory = null)
     {
         /// <summary>
         /// 録音予約リスト取得
@@ -309,6 +311,7 @@ namespace RadiCorder.Logics.Logics.ReserveLogic
             catch (Exception e)
             {
                 logger.ZLogError(e, $"古い予約情報の削除処理に失敗");
+                throw;
             }
         }
 

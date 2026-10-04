@@ -248,16 +248,15 @@ public class ProgramScheduleLobLogicTests
     }
 
     [Test]
-    public async Task SearchRadikoProgramAsync_例外時は空配列()
+    public async Task SearchRadikoProgramAsync_例外を呼び出し元へ返す()
     {
         var (logic, repoMock, context) = CreateTarget();
 
         repoMock.Setup(r => r.SearchRadikoProgramsAsync(It.IsAny<ProgramSearchEntity>(), context.StandardDateTimeOffset, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("db error"));
 
-        var result = await logic.SearchRadikoProgramAsync(new ProgramSearchEntity());
-
-        Assert.That(result, Is.Empty);
+        Assert.That(async () => await logic.SearchRadikoProgramAsync(new ProgramSearchEntity()),
+            Throws.Exception.With.Message.EqualTo("db error"));
     }
 
     [Test]
@@ -738,19 +737,18 @@ public class ProgramScheduleLobLogicTests
     }
 
     /// <summary>
-    /// らじる★らじる検索で例外時は空配列
+    /// らじる★らじる検索でDB障害を空結果に変換しない
     /// </summary>
     [Test]
-    public async Task SearchRadiruProgramAsync_例外時は空配列()
+    public async Task SearchRadiruProgramAsync_例外を呼び出し元へ返す()
     {
         var (logic, repoMock, context) = CreateTarget();
 
         repoMock.Setup(r => r.SearchRadiruProgramsAsync(It.IsAny<ProgramSearchEntity>(), context.StandardDateTimeOffset, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("db error"));
 
-        var result = await logic.SearchRadiruProgramAsync(new ProgramSearchEntity());
-
-        Assert.That(result, Is.Empty);
+        Assert.That(async () => await logic.SearchRadiruProgramAsync(new ProgramSearchEntity()),
+            Throws.Exception.With.Message.EqualTo("db error"));
     }
 
     /// <summary>

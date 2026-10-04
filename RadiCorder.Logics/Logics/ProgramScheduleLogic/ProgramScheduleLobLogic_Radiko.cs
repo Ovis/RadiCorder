@@ -113,7 +113,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             catch (Exception ex)
             {
                 logger.ZLogError(ex, $"番組検索に失敗しました。");
-                return [];
+                throw;
             }
         }
 
@@ -132,6 +132,7 @@ namespace RadiCorder.Logics.Logics.ProgramScheduleLogic
             catch (Exception e)
             {
                 logger.ZLogError(e, $"radikoの過去の番組データ削除に失敗");
+                throw;
             }
         }
     }

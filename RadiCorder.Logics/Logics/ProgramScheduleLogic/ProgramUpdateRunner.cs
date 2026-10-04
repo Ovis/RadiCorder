@@ -74,8 +74,16 @@ public class ProgramUpdateRunner(
             }, cancellationToken);
 
             // 更新後に予約再生成と更新時刻記録を行う。
-            await reserveLobLogic.DeleteOldReserveEntryAsync();
-            await reserveLobLogic.SetAllKeywordReserveScheduleAsync();
+            await report.RunAsync("古い予約の削除", async () =>
+            {
+                using var scope = serviceScopeFactory?.CreateScope();
+                await (scope?.ServiceProvider.GetRequiredService<ReserveLobLogic>() ?? reserveLobLogic).DeleteOldReserveEntryAsync();
+            }, cancellationToken);
+            await report.RunAsync("キーワード予約", async () =>
+            {
+                using var scope = serviceScopeFactory?.CreateScope();
+                await (scope?.ServiceProvider.GetRequiredService<ReserveLobLogic>() ?? reserveLobLogic).SetAllKeywordReserveScheduleAsync();
+            }, cancellationToken);
             if (!report.IsSuccess)
             {
                 foreach (var failure in report.Failures) logger.ZLogError(failure.Error, $"番組表更新に失敗しました。 service={failure.Target}");
